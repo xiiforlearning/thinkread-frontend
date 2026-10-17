@@ -1,8 +1,9 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import type { ApiRole } from '../api/types';
 import { apiBaseUrl } from '../lib/api-url';
-import { type AdminApi, HttpAdminApi, type TelegramLoginPayload } from './api';
+import { type AdminApi, HttpAdminApi } from './api';
 import { MockAdminApi } from './mock';
+import { signInWithTelegram } from './telegram-login';
 
 const TOKEN_KEY = 'thinkread.admin.token';
 const USER_KEY = 'thinkread.admin.user';
@@ -63,9 +64,8 @@ interface SessionValue {
   api: AdminApi;
   state: SessionState;
   apiUrl: string;
-  botUsername: string;
-  /** Telegram Login Widget callback → POST /auth/telegram-login. */
-  loginWithTelegram: (payload: TelegramLoginPayload) => Promise<void>;
+  /** "Log in with Telegram" popup → id_token → POST /auth/telegram-login. */
+  loginWithTelegram: () => Promise<void>;
   /** Developer path: a JWT from `pnpm dev:token owner|teacher <id>`. */
   loginWithToken: (token: string, name?: string) => void;
   startDemo: (role: 'OWNER' | 'TEACHER') => void;
@@ -91,7 +91,6 @@ function initialState(): SessionState {
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>(initialState);
   const apiUrl = useMemo(apiBaseUrl, []);
-  const botUsername = import.meta.env.VITE_BOT_USERNAME ?? '';
 
   const signOut = useCallback(() => {
     write(TOKEN_KEY, null);
@@ -135,14 +134,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState({ kind: 'signed-in', user, demo: false });
   }, []);
 
-  const loginWithTelegram = useCallback(
-    async (payload: TelegramLoginPayload) => {
-      const http = new HttpAdminApi(apiUrl, () => null);
-      const res = await http.auth.telegramLogin(payload);
-      loginWithToken(res.token, [payload.first_name, payload.last_name].filter(Boolean).join(' '));
-    },
-    [apiUrl, loginWithToken],
-  );
+  const loginWithTelegram = useCallback(async () => {
+    const http = new HttpAdminApi(apiUrl, () => null);
+    const { clientId } = await http.auth.loginConfig();
+    const idToken = await signInWithTelegram(clientId);
+    if (!idToken) return;
+    const res = await http.auth.telegramLogin({ id_token: idToken });
+    loginWithToken(res.token, res.name ?? undefined);
+  }, [apiUrl, loginWithToken]);
 
   const startDemo = useCallback((r: 'OWNER' | 'TEACHER') => {
     const user: StaffUser =
@@ -159,13 +158,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       api,
       state,
       apiUrl,
-      botUsername,
       loginWithTelegram,
       loginWithToken,
       startDemo,
       signOut,
     }),
-    [api, state, apiUrl, botUsername, loginWithTelegram, loginWithToken, startDemo, signOut],
+    [api, state, apiUrl, loginWithTelegram, loginWithToken, startDemo, signOut],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

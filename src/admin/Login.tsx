@@ -1,22 +1,15 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { Button, Callout, Card, TextField } from '../ui/components';
-import type { TelegramLoginPayload } from './api';
 import { errorText } from './Shell';
 import { useSession } from './session';
 
-declare global {
-  interface Window {
-    onThinkReadTelegramAuth?: (user: TelegramLoginPayload) => void;
-  }
-}
-
 /**
- * Sign-in: the Telegram Login Widget (OWNER / TEACHER only, verified by the backend),
- * a pasted developer token (`pnpm dev:token owner`) and the demo on in-memory data.
+ * Sign-in: "Log in with Telegram" (a popup that hands back an OpenID Connect id_token; the
+ * backend lets in OWNER / TEACHER only), a pasted developer token (`pnpm dev:token owner`) and
+ * the demo on in-memory data.
  */
 export function LoginScreen() {
-  const { botUsername, apiUrl, loginWithTelegram, loginWithToken, startDemo } = useSession();
-  const widget = useRef<HTMLDivElement>(null);
+  const { apiUrl, loginWithTelegram, loginWithToken, startDemo } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState('');
@@ -27,30 +20,13 @@ export function LoginScreen() {
     import.meta.env.VITE_DEMO === '1' ||
     new URLSearchParams(window.location.search).has('demo');
 
-  useEffect(() => {
-    const host = widget.current;
-    if (!host || !botUsername) return;
-    window.onThinkReadTelegramAuth = (user) => {
-      setBusy(true);
-      setError(null);
-      loginWithTelegram(user)
-        .catch((e: unknown) => setError(errorText(e)))
-        .finally(() => setBusy(false));
-    };
-    const script = document.createElement('script');
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.async = true;
-    script.setAttribute('data-telegram-login', botUsername);
-    script.setAttribute('data-size', 'large');
-    script.setAttribute('data-radius', '12');
-    script.setAttribute('data-onauth', 'onThinkReadTelegramAuth(user)');
-    script.setAttribute('data-request-access', 'write');
-    host.replaceChildren(script);
-    return () => {
-      host.replaceChildren();
-      delete window.onThinkReadTelegramAuth;
-    };
-  }, [botUsername, loginWithTelegram]);
+  const signIn = () => {
+    setBusy(true);
+    setError(null);
+    loginWithTelegram()
+      .catch((e: unknown) => setError(errorText(e)))
+      .finally(() => setBusy(false));
+  };
 
   const submitToken = (e: FormEvent) => {
     e.preventDefault();
@@ -69,15 +45,10 @@ export function LoginScreen() {
           Вход через Telegram: пускаем только владельца школы и учителей (админов групп с подписью
           teacher). Студентам сюда не нужно — у них Mini App.
         </span>
-        {botUsername ? (
-          <div ref={widget} style={{ display: 'flex', justifyContent: 'center', minHeight: 44 }} />
-        ) : (
-          <Callout tone="info">
-            Кнопка Telegram появится, когда в <code>frontend/.env</code> задан{' '}
-            <code>VITE_BOT_USERNAME</code> и у бота настроен домен (@BotFather → /setdomain).
-          </Callout>
-        )}
-        {busy ? <span className="ad-sub">Проверяю подпись Telegram…</span> : null}
+        <Button variant="primary" size="lg" icon="send" onClick={signIn} disabled={busy}>
+          Войти через Telegram
+        </Button>
+        {busy ? <span className="ad-sub">Ждём подтверждение в окне Telegram…</span> : null}
         {error ? <Callout tone="bad">{error}</Callout> : null}
 
         <details>

@@ -229,14 +229,16 @@ export interface AiUsage {
   topStudents: Array<{ studentId: string; name: string | null; costUsd: number; tokens: number }>;
 }
 
+/** `POST /auth/telegram-login`: the id_token of the "Log in with Telegram" popup. */
 export interface TelegramLoginPayload {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
+  id_token: string;
+}
+
+export interface StaffLoginResult {
+  token: string;
+  roles: ApiRole[];
+  /** Display name from Telegram, for the dashboard header. */
+  name: string | null;
 }
 
 export interface StudentsQuery {
@@ -298,7 +300,9 @@ export interface AdminApi {
   /** Stage 8 features the backend does not serve yet; the demo has them. */
   readonly features: { teacherChat: boolean; parentReport: boolean };
   auth: {
-    telegramLogin(payload: TelegramLoginPayload): Promise<{ token: string; roles: ApiRole[] }>;
+    /** Public: the OAuth client id for the popup. */
+    loginConfig(): Promise<{ clientId: string }>;
+    telegramLogin(payload: TelegramLoginPayload): Promise<StaffLoginResult>;
   };
   overview(week: 'this' | 'last'): Promise<Overview>;
   students: {
@@ -424,6 +428,7 @@ export class HttpAdminApi implements AdminApi {
   }
 
   auth: AdminApi['auth'] = {
+    loginConfig: () => this.call('GET', '/auth/login-config'),
     telegramLogin: (payload) => this.call('POST', '/auth/telegram-login', payload),
   };
 
