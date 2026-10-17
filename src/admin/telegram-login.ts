@@ -1,101 +1,116 @@
 /**
- * "Log in with Telegram" (OpenID Connect): Telegram's library opens a popup and hands back a
- * signed `id_token`; the backend checks it against Telegram's public keys. BotFather must list
- * this page as the redirect URL (`<origin>/admin.html`) and the origin as trusted — the library
- * sends the current page as `redirect_uri`, matched exactly, so the query and hash are dropped
- * for the duration of the call.
+ * "Log in with Telegram" for the dashboard: the standard OpenID Connect authorization-code
+ * flow with PKCE. The page sends the browser to `oauth.telegram.org/auth`; Telegram asks the
+ * user to confirm and redirects back to this page with `?code=…&state=…`; the code plus the
+ * PKCE verifier go to the backend, which swaps them for an id_token and checks it.
+ * BotFather (Bot Settings → Login Widget) must list this page as the redirect URL
+ * (`<origin>/admin.html`) — the query and hash are stripped when the flow starts.
  */
-const SCRIPT_URL = 'https://telegram.org/js/telegram-login.js';
+const AUTH_URL = 'https://oauth.telegram.org/auth';
+const PENDING_KEY = 'thinkread.admin.tg-login';
 
-interface TelegramLoginResult {
-  id_token?: string;
-  error?: string;
+interface Pending {
+  state: string;
+  verifier: string;
+  redirectUri: string;
+  /** Where the user was (hash route) before leaving the page. */
+  returnTo: string;
 }
 
-interface TelegramLoginApi {
-  auth(
-    options: { client_id: number | string; request_access?: string[]; lang?: string },
-    callback: (result: TelegramLoginResult) => void,
-  ): void;
+function randomUrlSafe(bytes: number): string {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return base64Url(buf);
 }
 
-/** `window.Telegram` is declared by `telegram/webapp.ts` for the Mini App; the dashboard reads `.Login`. */
-function loaded(): TelegramLoginApi | undefined {
-  return (window.Telegram as { Login?: TelegramLoginApi } | undefined)?.Login;
+function base64Url(bytes: ArrayBuffer | Uint8Array): string {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let s = '';
+  for (const b of arr) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-let loading: Promise<TelegramLoginApi> | null = null;
-
-export function loadTelegramLogin(): Promise<TelegramLoginApi> {
-  const present = loaded();
-  if (present) return Promise.resolve(present);
-  if (!loading) {
-    loading = new Promise<TelegramLoginApi>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = SCRIPT_URL;
-      script.async = true;
-      script.onload = () => {
-        const api = loaded();
-        if (api) resolve(api);
-        else reject(new Error('Библиотека входа Telegram загрузилась без Telegram.Login.'));
-      };
-      script.onerror = () => reject(new Error('Не удалось загрузить библиотеку входа Telegram.'));
-      document.head.appendChild(script);
-    }).catch((err: unknown) => {
-      loading = null;
-      throw err;
-    });
-  }
-  return loading;
+async function challengeOf(verifier: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return base64Url(digest);
 }
 
-export const POPUP_BLOCKED_HINT =
-  'Окно Telegram не открылось: браузер блокирует всплывающие окна. Разрешите их для этого сайта (значок в адресной строке) и нажмите ещё раз.';
+/** This page without query and hash — the exact redirect URL registered in BotFather. */
+export function redirectUri(): string {
+  return window.location.origin + window.location.pathname;
+}
 
-let prepared: { api: TelegramLoginApi; clientId: string } | null = null;
+/** Leaves the page for Telegram; nothing runs after it resolves. */
+export async function startTelegramLogin(clientId: string): Promise<void> {
+  const verifier = randomUrlSafe(48);
+  const state = randomUrlSafe(16);
+  const pending: Pending = {
+    state,
+    verifier,
+    redirectUri: redirectUri(),
+    returnTo: window.location.hash,
+  };
+  sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+  const url = new URL(AUTH_URL);
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('redirect_uri', pending.redirectUri);
+  url.searchParams.set('scope', 'openid profile');
+  url.searchParams.set('state', state);
+  url.searchParams.set('code_challenge', await challengeOf(verifier));
+  url.searchParams.set('code_challenge_method', 'S256');
+  window.location.assign(url.toString());
+}
+
+export interface TelegramReturn {
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+  returnTo: string;
+}
 
 /**
- * Load the library and the client id ahead of the click: browsers allow `window.open` only
- * synchronously inside a user gesture, so nothing may be awaited between the click and `auth()`.
+ * On page load: did Telegram just send us back? Reads and clears `?code&state` (or `?error`),
+ * checks `state` against what this browser stored, and returns what the backend needs.
+ * Throws when Telegram reported an error or the state does not match (a foreign link).
  */
-export async function prepareTelegramLogin(clientId: () => Promise<string>): Promise<void> {
-  if (prepared) return;
-  const [api, id] = await Promise.all([loadTelegramLogin(), clientId()]);
-  prepared = { api, clientId: id };
-}
+export function takeTelegramReturn(): TelegramReturn | null {
+  const q = new URLSearchParams(window.location.search);
+  const code = q.get('code');
+  const error = q.get('error');
+  const description = q.get('error_description');
+  const state = q.get('state');
+  if (!code && !error) return null;
 
-export function telegramLoginReady(): boolean {
-  return prepared !== null;
-}
-
-/**
- * Opens the popup synchronously (call it directly from the click handler, after
- * `prepareTelegramLogin`); resolves with the id_token, or null when the user closed the window.
- * `onMaybeBlocked` fires when `window.open` returned null — usually a blocked popup, but some
- * popups legitimately return null (noopener), so the promise keeps waiting for Telegram's answer.
- */
-export function openTelegramLogin(onMaybeBlocked?: () => void): Promise<string | null> {
-  if (!prepared) return Promise.reject(new Error('Вход Telegram ещё не готов, нажмите ещё раз.'));
-  const { api, clientId } = prepared;
-  const original = window.location.pathname + window.location.search + window.location.hash;
-  const clean = window.location.pathname;
-  const nativeOpen = window.open;
+  let pending: Pending | null = null;
   try {
-    if (original !== clean) history.replaceState(history.state, '', clean);
-    return new Promise<string | null>((resolve, reject) => {
-      window.open = (...args: Parameters<typeof window.open>): Window | null => {
-        const opened = nativeOpen.apply(window, args);
-        if (opened === null) onMaybeBlocked?.();
-        return opened;
-      };
-      api.auth({ client_id: clientId, lang: 'ru' }, (result) => {
-        if (result.id_token) resolve(result.id_token);
-        else if (!result.error || result.error === 'popup_closed') resolve(null);
-        else reject(new Error(`Telegram: ${result.error}`));
-      });
-    });
-  } finally {
-    window.open = nativeOpen;
-    if (original !== clean) history.replaceState(history.state, '', original);
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    pending = raw ? (JSON.parse(raw) as Pending) : null;
+    sessionStorage.removeItem(PENDING_KEY);
+  } catch {
+    pending = null;
   }
+  // Drop the one-time parameters from the address bar whatever happens next.
+  for (const k of ['code', 'state', 'error', 'error_description', 'scope', 'iss']) q.delete(k);
+  const rest = q.toString();
+  const clean = window.location.pathname + (rest ? `?${rest}` : '') + (pending?.returnTo ?? '');
+  history.replaceState(history.state, '', clean);
+
+  if (error) {
+    throw new Error(
+      error === 'access_denied'
+        ? 'Вход отменён в Telegram.'
+        : `Telegram не подтвердил вход: ${description ?? error}.`,
+    );
+  }
+  if (!pending || !state || state !== pending.state)
+    throw new Error(
+      'Ссылка входа устарела или открыта в другом браузере. Нажмите «Войти через Telegram» ещё раз.',
+    );
+  return {
+    code: code as string,
+    codeVerifier: pending.verifier,
+    redirectUri: pending.redirectUri,
+    returnTo: pending.returnTo,
+  };
 }

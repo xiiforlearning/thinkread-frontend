@@ -53,10 +53,11 @@ tunnel. `.github/workflows/pages.yml` (manual run) is a fallback on GitHub Pages
 `http://localhost:5173/admin.html` — the web dashboard for Рустам and the teachers, on the same
 design system and the `/admin/*` API (`src/admin/api.ts` mirrors `admin/serializers.ts`).
 
-- **Sign-in**: «Войти через Telegram» opens Telegram's OpenID Connect popup
-  (`src/admin/telegram-login.ts`; the client id comes from `GET /auth/login-config`) and sends
-  the `id_token` to `POST /auth/telegram-login`; only OWNER / TEACHER get a JWT (kept in
-  localStorage). BotFather must list `<origin>/admin.html` as the redirect URL. For local work paste a token from `pnpm dev:token owner` into «Войти по токену
+- **Sign-in**: «Войти через Telegram» sends the browser to `oauth.telegram.org/auth`
+  (authorization code + PKCE, `src/admin/telegram-login.ts`; the client id comes from
+  `GET /auth/login-config`); Telegram redirects back to `admin.html?code=…&state=…` and the code
+  goes to `POST /auth/telegram-login`; only OWNER / TEACHER get a JWT (kept in localStorage).
+  BotFather must list `<origin>/admin.html` as the redirect URL. For local work paste a token from `pnpm dev:token owner` into «Войти по токену
   разработчика». **Demo**: the «Демо» buttons, `?demo=1` or `VITE_DEMO=1` run `MockAdminApi`
   (`src/admin/mock.ts`) — the school of the artboards, no backend.
 - **Screens** (`src/admin/screens/`): Overview (norm rates, health by group, 8-week chart, top

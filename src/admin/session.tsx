@@ -1,13 +1,17 @@
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import type { ApiRole } from '../api/types';
 import { apiBaseUrl } from '../lib/api-url';
 import { type AdminApi, HttpAdminApi } from './api';
 import { MockAdminApi } from './mock';
-import {
-  openTelegramLogin,
-  prepareTelegramLogin as preloadTelegramLogin,
-  telegramLoginReady,
-} from './telegram-login';
+import { startTelegramLogin, takeTelegramReturn } from './telegram-login';
 
 const TOKEN_KEY = 'thinkread.admin.token';
 const USER_KEY = 'thinkread.admin.user';
@@ -68,10 +72,12 @@ interface SessionValue {
   api: AdminApi;
   state: SessionState;
   apiUrl: string;
-  /** Preload Telegram's library and the client id, so the click can open the popup at once. */
-  prepareTelegramLogin: () => Promise<void>;
-  /** "Log in with Telegram" popup → id_token → POST /auth/telegram-login. */
-  loginWithTelegram: (onMaybeBlocked?: () => void) => Promise<void>;
+  /** Sends the browser to Telegram (authorization code + PKCE); the page comes back with `?code`. */
+  loginWithTelegram: () => Promise<void>;
+  /** Set while the code Telegram sent back is being exchanged on the backend. */
+  returning: boolean;
+  /** Why the return from Telegram failed (state mismatch, access denied, backend refusal). */
+  returnError: string | null;
   /** Developer path: a JWT from `pnpm dev:token owner|teacher <id>`. */
   loginWithToken: (token: string, name?: string) => void;
   startDemo: (role: 'OWNER' | 'TEACHER') => void;
@@ -140,23 +146,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState({ kind: 'signed-in', user, demo: false });
   }, []);
 
-  const prepareTelegramLogin = useCallback(() => {
+  const loginWithTelegram = useCallback(async () => {
     const http = new HttpAdminApi(apiUrl, () => null);
-    return preloadTelegramLogin(() => http.auth.loginConfig().then((c) => c.clientId));
+    const { clientId } = await http.auth.loginConfig();
+    await startTelegramLogin(clientId);
   }, [apiUrl]);
 
-  const loginWithTelegram = useCallback(
-    async (onMaybeBlocked?: () => void) => {
-      // No await before openTelegramLogin() once prepared: the popup must open inside the click.
-      if (!telegramLoginReady()) await prepareTelegramLogin();
-      const idToken = await openTelegramLogin(onMaybeBlocked);
-      if (!idToken) return;
-      const http = new HttpAdminApi(apiUrl, () => null);
-      const res = await http.auth.telegramLogin({ id_token: idToken });
-      loginWithToken(res.token, res.name ?? undefined);
-    },
-    [apiUrl, prepareTelegramLogin, loginWithToken],
-  );
+  // Back from Telegram: swap the code for a session, once, on page load.
+  const [returning, setReturning] = useState(false);
+  const [returnError, setReturnError] = useState<string | null>(null);
+  useEffect(() => {
+    let back;
+    try {
+      back = takeTelegramReturn();
+    } catch (e) {
+      setReturnError(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    if (!back) return;
+    setReturning(true);
+    const http = new HttpAdminApi(apiUrl, () => null);
+    http.auth
+      .telegramLogin({
+        code: back.code,
+        code_verifier: back.codeVerifier,
+        redirect_uri: back.redirectUri,
+      })
+      .then((res) => loginWithToken(res.token, res.name ?? undefined))
+      .catch((e: unknown) => setReturnError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setReturning(false));
+  }, [apiUrl, loginWithToken]);
 
   const startDemo = useCallback((r: 'OWNER' | 'TEACHER') => {
     const user: StaffUser =
@@ -173,8 +192,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       api,
       state,
       apiUrl,
-      prepareTelegramLogin,
       loginWithTelegram,
+      returning,
+      returnError,
       loginWithToken,
       startDemo,
       signOut,
@@ -183,8 +203,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       api,
       state,
       apiUrl,
-      prepareTelegramLogin,
       loginWithTelegram,
+      returning,
+      returnError,
       loginWithToken,
       startDemo,
       signOut,

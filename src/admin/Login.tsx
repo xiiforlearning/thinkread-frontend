@@ -1,22 +1,18 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { Button, Callout, Card, TextField } from '../ui/components';
-import { POPUP_BLOCKED_HINT } from './telegram-login';
 import { errorText } from './Shell';
 import { useSession } from './session';
 
 /**
- * Sign-in: "Log in with Telegram" (a popup that hands back an OpenID Connect id_token; the
- * backend lets in OWNER / TEACHER only), a pasted developer token (`pnpm dev:token owner`) and
- * the demo on in-memory data.
+ * Sign-in: "Log in with Telegram" (the page goes to oauth.telegram.org and comes back with a
+ * code the backend swaps for a session; OWNER / TEACHER only), a pasted developer token
+ * (`pnpm dev:token owner`) and the demo on in-memory data.
  */
 export function LoginScreen() {
-  const { apiUrl, prepareTelegramLogin, loginWithTelegram, loginWithToken, startDemo } =
+  const { apiUrl, loginWithTelegram, returning, returnError, loginWithToken, startDemo } =
     useSession();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [ready, setReady] = useState<'loading' | 'ready' | 'failed'>('loading');
-  const [readyError, setReadyError] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
   const [token, setToken] = useState('');
   const [name, setName] = useState('');
   // The demo on mock data is offered only when asked for (`?demo=1`, `VITE_DEMO=1`) or in dev.
@@ -25,33 +21,14 @@ export function LoginScreen() {
     import.meta.env.VITE_DEMO === '1' ||
     new URLSearchParams(window.location.search).has('demo');
 
-  // Preload the Telegram library and the client id: the popup must open synchronously on click.
-  useEffect(() => {
-    let cancelled = false;
-    prepareTelegramLogin()
-      .then(() => {
-        if (!cancelled) setReady('ready');
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setReady('failed');
-        setReadyError(errorText(e));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [prepareTelegramLogin]);
-
   const signIn = () => {
     setBusy(true);
     setError(null);
-    setHint(null);
-    loginWithTelegram(() => setHint(POPUP_BLOCKED_HINT))
-      .catch((e: unknown) => setError(errorText(e)))
-      .finally(() => {
-        setBusy(false);
-        setHint(null);
-      });
+    // On success the browser leaves the page; busy stays on until then.
+    loginWithTelegram().catch((e: unknown) => {
+      setError(errorText(e));
+      setBusy(false);
+    });
   };
 
   const submitToken = (e: FormEvent) => {
@@ -76,19 +53,13 @@ export function LoginScreen() {
           size="lg"
           icon="send"
           onClick={signIn}
-          disabled={busy || ready !== 'ready'}
+          disabled={busy || returning}
         >
           Войти через Telegram
         </Button>
-        {ready === 'loading' ? <span className="ad-sub">Загружаю вход Telegram…</span> : null}
-        {ready === 'failed' ? (
-          <Callout tone="bad">
-            Вход Telegram не загрузился: {readyError}. Обновите страницу; если повторяется —
-            проверьте адрес API и что сервер запущен.
-          </Callout>
-        ) : null}
-        {busy ? <span className="ad-sub">Ждём подтверждение в окне Telegram…</span> : null}
-        {hint ? <Callout tone="warn">{hint}</Callout> : null}
+        {busy ? <span className="ad-sub">Переходим в Telegram…</span> : null}
+        {returning ? <span className="ad-sub">Проверяем ответ Telegram…</span> : null}
+        {returnError ? <Callout tone="bad">{returnError}</Callout> : null}
         {error ? <Callout tone="bad">{error}</Callout> : null}
 
         <details>

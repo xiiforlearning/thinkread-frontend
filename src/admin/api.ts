@@ -229,9 +229,11 @@ export interface AiUsage {
   topStudents: Array<{ studentId: string; name: string | null; costUsd: number; tokens: number }>;
 }
 
-/** `POST /auth/telegram-login`: the id_token of the "Log in with Telegram" popup. */
+/** `POST /auth/telegram-login`: the authorization code Telegram redirected back with (PKCE). */
 export interface TelegramLoginPayload {
-  id_token: string;
+  code: string;
+  code_verifier: string;
+  redirect_uri: string;
 }
 
 export interface StaffLoginResult {
