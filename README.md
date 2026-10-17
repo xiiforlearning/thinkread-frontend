@@ -20,8 +20,10 @@ pnpm dev                    # http://localhost:5173
 
 - **Inside Telegram** the app signs in with `initData` (`POST /auth/webapp`) and talks to the
   backend at `VITE_API_URL`.
-- **Outside Telegram** (a browser, `VITE_DEMO=1`) it runs on in-memory demo data (`src/api/mock.ts`)
-  with the same API contract — nothing to deploy to show the UI. `?demo=pending` shows the first
+- **Outside Telegram** a production build shows the "open in Telegram" screen with a link to
+  `VITE_BOT_USERNAME`; with `?demo=1` in the URL or `VITE_DEMO=1` at build time it runs on
+  in-memory demo data (`src/api/mock.ts`) with the same API contract — nothing to deploy to
+  show the UI. The dashboard offers its demo buttons under the same condition. `?demo=pending` shows the first
   login (name form), `?demo=not_member` the "no access" screen, `?demo=staff` the teacher's
   hand-over to the dashboard.
 

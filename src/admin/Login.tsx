@@ -21,6 +21,11 @@ export function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState('');
   const [name, setName] = useState('');
+  // The demo on mock data is offered only when asked for (`?demo=1`, `VITE_DEMO=1`) or in dev.
+  const demoOffered =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_DEMO === '1' ||
+    new URLSearchParams(window.location.search).has('demo');
 
   useEffect(() => {
     const host = widget.current;
@@ -104,17 +109,21 @@ export function LoginScreen() {
           </form>
         </details>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button variant="tonal" size="md" icon="star" onClick={() => startDemo('OWNER')}>
-            Демо: владелец
-          </Button>
-          <Button variant="ghost" size="md" onClick={() => startDemo('TEACHER')}>
-            Демо: учитель
-          </Button>
-        </div>
-        <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-          Демо работает на данных из макета, без сервера.
-        </span>
+        {demoOffered ? (
+          <>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Button variant="tonal" size="md" icon="star" onClick={() => startDemo('OWNER')}>
+                Демо: владелец
+              </Button>
+              <Button variant="ghost" size="md" onClick={() => startDemo('TEACHER')}>
+                Демо: учитель
+              </Button>
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+              Демо работает на данных из макета, без сервера.
+            </span>
+          </>
+        ) : null}
       </Card>
     </div>
   );

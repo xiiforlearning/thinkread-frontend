@@ -16,12 +16,19 @@ import { initData, insideTelegram, tg } from '../telegram/webapp';
 const TOKEN_KEY = 'thinkread.token';
 
 /**
- * Demo mode: explicit `VITE_DEMO=1`, or the app is opened outside Telegram
- * (no initData — nothing to sign in with). `?demo=pending|not_member|archived`
- * picks the first-login state to show.
+ * Demo mode (in-memory data) only when asked for: `VITE_DEMO=1` at build time, or `?demo=…` in
+ * the URL (`?demo=1`; `pending|not_member|archived|staff` pick the first-login state). Outside
+ * Telegram without it the app shows the "open in Telegram" screen instead of pretending.
  */
 export function isDemo(): boolean {
-  return import.meta.env.VITE_DEMO === '1' || !insideTelegram();
+  return (
+    import.meta.env.VITE_DEMO === '1' || new URLSearchParams(window.location.search).has('demo')
+  );
+}
+
+/** The bot to open when the page is visited in a plain browser (`VITE_BOT_USERNAME`). */
+export function botUsername(): string {
+  return (import.meta.env.VITE_BOT_USERNAME ?? '').replace(/^@/, '');
 }
 
 function demoAccess(): AccessStatus {
@@ -67,6 +74,8 @@ export function openDashboard(roles: ApiRole[], demo: boolean): void {
 
 export type SessionState =
   | { kind: 'loading' }
+  /** A plain browser, no Telegram initData and no demo requested. */
+  | { kind: 'outside' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; status: AccessStatus; roles: ApiRole[] };
 
@@ -98,6 +107,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (!demo && !insideTelegram()) {
+      setState({ kind: 'outside' });
+      return undefined;
+    }
     setState({ kind: 'loading' });
     api.auth
       .webApp(initData())
@@ -114,7 +127,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [api, attempt]);
+  }, [api, attempt, demo]);
 
   const refresh = useCallback(() => setAttempt((n) => n + 1), []);
   const activate = useCallback(

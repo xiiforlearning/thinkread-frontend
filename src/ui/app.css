@@ -97,6 +97,11 @@ button {
   gap: 20px;
   text-align: center;
 }
+/* Step lists on the standalone screens: let titles and subtitles wrap. */
+.tr-steps .tr-cell-title,
+.tr-steps .tr-cell-sub {
+  white-space: normal;
+}
 .tr-mainbar {
   padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
 }

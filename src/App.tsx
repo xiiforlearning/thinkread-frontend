@@ -9,6 +9,7 @@ import { MainScreen } from './screens/Main';
 import { MethodScreen } from './screens/Method';
 import { NotRegisteredScreen } from './screens/NotRegistered';
 import { OnboardingScreen } from './screens/Onboarding';
+import { OutsideTelegramScreen } from './screens/OutsideTelegram';
 import { ProfileScreen } from './screens/Profile';
 import { ReportsScreen } from './screens/Reports';
 import { StaffScreen } from './screens/Staff';
@@ -24,6 +25,7 @@ const queryClient = new QueryClient({
 function Gate() {
   const { state, refresh } = useSession();
   const location = useLocation();
+  if (state.kind === 'outside') return <OutsideTelegramScreen />;
   if (state.kind === 'loading')
     return (
       <Screen>
