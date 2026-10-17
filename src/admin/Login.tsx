@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Button, Callout, Card, TextField } from '../ui/components';
+import { POPUP_BLOCKED_HINT } from './telegram-login';
 import { errorText } from './Shell';
 import { useSession } from './session';
 
@@ -13,6 +14,9 @@ export function LoginScreen() {
     useSession();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [readyError, setReadyError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const [token, setToken] = useState('');
   const [name, setName] = useState('');
   // The demo on mock data is offered only when asked for (`?demo=1`, `VITE_DEMO=1`) or in dev.
@@ -23,15 +27,31 @@ export function LoginScreen() {
 
   // Preload the Telegram library and the client id: the popup must open synchronously on click.
   useEffect(() => {
-    prepareTelegramLogin().catch(() => undefined);
+    let cancelled = false;
+    prepareTelegramLogin()
+      .then(() => {
+        if (!cancelled) setReady('ready');
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setReady('failed');
+        setReadyError(errorText(e));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [prepareTelegramLogin]);
 
   const signIn = () => {
     setBusy(true);
     setError(null);
-    loginWithTelegram()
+    setHint(null);
+    loginWithTelegram(() => setHint(POPUP_BLOCKED_HINT))
       .catch((e: unknown) => setError(errorText(e)))
-      .finally(() => setBusy(false));
+      .finally(() => {
+        setBusy(false);
+        setHint(null);
+      });
   };
 
   const submitToken = (e: FormEvent) => {
@@ -51,10 +71,24 @@ export function LoginScreen() {
           Вход через Telegram: пускаем только владельца школы и учителей (админов групп с подписью
           teacher). Студентам сюда не нужно — у них Mini App.
         </span>
-        <Button variant="primary" size="lg" icon="send" onClick={signIn} disabled={busy}>
+        <Button
+          variant="primary"
+          size="lg"
+          icon="send"
+          onClick={signIn}
+          disabled={busy || ready !== 'ready'}
+        >
           Войти через Telegram
         </Button>
+        {ready === 'loading' ? <span className="ad-sub">Загружаю вход Telegram…</span> : null}
+        {ready === 'failed' ? (
+          <Callout tone="bad">
+            Вход Telegram не загрузился: {readyError}. Обновите страницу; если повторяется —
+            проверьте адрес API и что сервер запущен.
+          </Callout>
+        ) : null}
         {busy ? <span className="ad-sub">Ждём подтверждение в окне Telegram…</span> : null}
+        {hint ? <Callout tone="warn">{hint}</Callout> : null}
         {error ? <Callout tone="bad">{error}</Callout> : null}
 
         <details>
@@ -86,6 +120,9 @@ export function LoginScreen() {
           </form>
         </details>
 
+        <span className="ad-sub" style={{ opacity: 0.6 }}>
+          сборка {__BUILD__}
+        </span>
         {demoOffered ? (
           <>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

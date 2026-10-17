@@ -49,12 +49,8 @@ export function loadTelegramLogin(): Promise<TelegramLoginApi> {
   return loading;
 }
 
-export class PopupBlockedError extends Error {
-  constructor() {
-    super('Браузер заблокировал окно Telegram. Разрешите всплывающие окна для этого сайта.');
-    this.name = 'PopupBlockedError';
-  }
-}
+export const POPUP_BLOCKED_HINT =
+  'Окно Telegram не открылось: браузер блокирует всплывающие окна. Разрешите их для этого сайта (значок в адресной строке) и нажмите ещё раз.';
 
 let prepared: { api: TelegramLoginApi; clientId: string } | null = null;
 
@@ -75,8 +71,10 @@ export function telegramLoginReady(): boolean {
 /**
  * Opens the popup synchronously (call it directly from the click handler, after
  * `prepareTelegramLogin`); resolves with the id_token, or null when the user closed the window.
+ * `onMaybeBlocked` fires when `window.open` returned null — usually a blocked popup, but some
+ * popups legitimately return null (noopener), so the promise keeps waiting for Telegram's answer.
  */
-export function openTelegramLogin(): Promise<string | null> {
+export function openTelegramLogin(onMaybeBlocked?: () => void): Promise<string | null> {
   if (!prepared) return Promise.reject(new Error('Вход Telegram ещё не готов, нажмите ещё раз.'));
   const { api, clientId } = prepared;
   const original = window.location.pathname + window.location.search + window.location.hash;
@@ -87,7 +85,7 @@ export function openTelegramLogin(): Promise<string | null> {
     return new Promise<string | null>((resolve, reject) => {
       window.open = (...args: Parameters<typeof window.open>): Window | null => {
         const opened = nativeOpen.apply(window, args);
-        if (opened === null) reject(new PopupBlockedError());
+        if (opened === null) onMaybeBlocked?.();
         return opened;
       };
       api.auth({ client_id: clientId, lang: 'ru' }, (result) => {

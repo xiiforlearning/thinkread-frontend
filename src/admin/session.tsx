@@ -71,7 +71,7 @@ interface SessionValue {
   /** Preload Telegram's library and the client id, so the click can open the popup at once. */
   prepareTelegramLogin: () => Promise<void>;
   /** "Log in with Telegram" popup → id_token → POST /auth/telegram-login. */
-  loginWithTelegram: () => Promise<void>;
+  loginWithTelegram: (onMaybeBlocked?: () => void) => Promise<void>;
   /** Developer path: a JWT from `pnpm dev:token owner|teacher <id>`. */
   loginWithToken: (token: string, name?: string) => void;
   startDemo: (role: 'OWNER' | 'TEACHER') => void;
@@ -145,15 +145,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return preloadTelegramLogin(() => http.auth.loginConfig().then((c) => c.clientId));
   }, [apiUrl]);
 
-  const loginWithTelegram = useCallback(async () => {
-    // No await before openTelegramLogin() once prepared: the popup must open inside the click.
-    if (!telegramLoginReady()) await prepareTelegramLogin();
-    const idToken = await openTelegramLogin();
-    if (!idToken) return;
-    const http = new HttpAdminApi(apiUrl, () => null);
-    const res = await http.auth.telegramLogin({ id_token: idToken });
-    loginWithToken(res.token, res.name ?? undefined);
-  }, [apiUrl, prepareTelegramLogin, loginWithToken]);
+  const loginWithTelegram = useCallback(
+    async (onMaybeBlocked?: () => void) => {
+      // No await before openTelegramLogin() once prepared: the popup must open inside the click.
+      if (!telegramLoginReady()) await prepareTelegramLogin();
+      const idToken = await openTelegramLogin(onMaybeBlocked);
+      if (!idToken) return;
+      const http = new HttpAdminApi(apiUrl, () => null);
+      const res = await http.auth.telegramLogin({ id_token: idToken });
+      loginWithToken(res.token, res.name ?? undefined);
+    },
+    [apiUrl, prepareTelegramLogin, loginWithToken],
+  );
 
   const startDemo = useCallback((r: 'OWNER' | 'TEACHER') => {
     const user: StaffUser =
