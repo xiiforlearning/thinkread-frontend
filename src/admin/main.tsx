@@ -5,6 +5,7 @@ import '../ui/components.css';
 import '../ui/app.css';
 import '../ui/admin.css';
 import App from './App';
+import { RootErrorBoundary } from './ErrorBoundary';
 
 // The design tokens switch on `data-theme`; the dashboard follows the system scheme.
 const scheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -15,6 +16,8 @@ scheme.addEventListener('change', applyTheme);
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <App />
+    <RootErrorBoundary>
+      <App />
+    </RootErrorBoundary>
   </StrictMode>,
 );

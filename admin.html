@@ -13,7 +13,21 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Replaced by React on mount; stays visible when the script never ran. -->
+      <p id="boot" style="font-family: system-ui; padding: 48px 24px; opacity: 0.7">
+        Загружаю дашборд… Если надпись не исчезает, обновите страницу (Ctrl+Shift+R).
+      </p>
+    </div>
+    <script>
+      // A script that failed to load or threw before React mounted: say so instead of a blank page.
+      window.addEventListener('error', function (e) {
+        var boot = document.getElementById('boot');
+        if (!boot) return;
+        var what = e.message || (e.target && e.target.src ? 'не загрузился ' + e.target.src : 'ошибка');
+        boot.textContent = 'Дашборд не запустился: ' + what + ' — обновите страницу (Ctrl+Shift+R). Если повторяется, пришлите этот текст разработчику.';
+      }, true);
+    </script>
     <script type="module" src="/src/admin/main.tsx"></script>
   </body>
 </html>
