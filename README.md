@@ -1,5 +1,9 @@
 # ThinkRead — Mini App and dashboard (frontend)
 
+The frontend of [thinkread-backend](https://github.com/xiiforlearning/thinkread-backend) (NestJS
+API + Telegram bot), split into its own repository for Vercel. Keep `src/api/types.ts` and
+`src/admin/api.ts` in sync with the backend serializers by hand.
+
 Two pages in one Vite project: the students' Telegram Mini App (`index.html`) and the owner's /
 teachers' web dashboard (`admin.html`). React 19 + Vite 7 + TypeScript, TanStack Query, React
 Router (hash routing). The UI is the **ThinkRead Design System** (artifact): `src/ui/tokens.css` and
@@ -9,7 +13,6 @@ its component bundle. Screens follow the artboards of «ThinkRead — клика
 ## Run
 
 ```bash
-cd frontend
 pnpm install
 cp .env.example .env        # VITE_API_URL, VITE_DEMO
 pnpm dev                    # http://localhost:5173
@@ -23,12 +26,23 @@ pnpm dev                    # http://localhost:5173
   hand-over to the dashboard.
 
 `pnpm build` → `dist/` (static, relative paths — any static host works; `base: './'`).
-`.github/workflows/pages.yml` publishes the build to GitHub Pages — the public HTTPS address
-Telegram needs (`https://<owner>.github.io/<repo>/`, the dashboard at `…/admin.html`). The API
-address is `VITE_API_URL` at build time (repository variable `API_URL`) or, at run time,
-`?api=https://…` in the page URL (remembered in localStorage; `?api=` forgets it) — so the Pages
-build can point at a local backend behind a cloudflared / ngrok tunnel. Outside Telegram the Mini
-App still runs on demo data; the dashboard has its demo buttons.
+
+## Deploy (Vercel)
+
+Import this repository in Vercel: framework **Vite** (auto-detected, `vercel.json` pins the
+commands), root directory `/`. Environment variables:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | public URL of the backend, e.g. `https://thinkread-api.up.railway.app` |
+| `VITE_BOT_USERNAME` | bot username without `@` — enables the Telegram Login Widget on the dashboard |
+
+Every push to `main` redeploys. The Mini App is the site root (`https://<project>.vercel.app/`), the
+dashboard is `…/admin.html`. Then in the backend set `WEBAPP_URL` to the site root and
+`CORS_ORIGINS` to the origin, in @BotFather `/newapp` (or `/setmenubutton`) to the site root and
+`/setdomain` to the Vercel host. At run time `?api=https://…` in the page URL overrides the API
+address (remembered in localStorage; `?api=` forgets it) — handy for a local backend behind a
+tunnel. `.github/workflows/pages.yml` (manual run) is a fallback on GitHub Pages.
 
 ## Dashboard (`admin.html`)
 
