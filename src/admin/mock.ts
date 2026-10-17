@@ -1035,8 +1035,8 @@ export class MockAdminApi implements AdminApi {
   }
 
   auth: AdminApi['auth'] = {
-    loginConfig: async () => ({ clientId: '0' }),
-    telegramLogin: async () => ({ token: 'demo', roles: [this.role], name: null }),
+    requestCode: async () => ({ expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+    verifyCode: async () => ({ token: 'demo', roles: [this.role], name: null }),
   };
 
   overview: AdminApi['overview'] = async (week) => {

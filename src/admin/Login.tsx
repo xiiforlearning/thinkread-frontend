@@ -4,15 +4,16 @@ import { errorText } from './Shell';
 import { useSession } from './session';
 
 /**
- * Sign-in: "Log in with Telegram" (the page goes to oauth.telegram.org and comes back with a
- * code the backend swaps for a session; OWNER / TEACHER only), a pasted developer token
+ * Sign-in: a one-time code the bot sends in Telegram (the owner asks for it with the button,
+ * a teacher by writing anything to the bot; OWNER / TEACHER only), a pasted developer token
  * (`pnpm dev:token owner`) and the demo on in-memory data.
  */
 export function LoginScreen() {
-  const { apiUrl, loginWithTelegram, returning, returnError, loginWithToken, startDemo } =
-    useSession();
+  const { apiUrl, requestCode, loginWithCode, loginWithToken, startDemo } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState<Date | null>(null);
+  const [code, setCode] = useState('');
   const [token, setToken] = useState('');
   const [name, setName] = useState('');
   // The demo on mock data is offered only when asked for (`?demo=1`, `VITE_DEMO=1`) or in dev.
@@ -21,12 +22,21 @@ export function LoginScreen() {
     import.meta.env.VITE_DEMO === '1' ||
     new URLSearchParams(window.location.search).has('demo');
 
-  const signIn = () => {
+  const askCode = () => {
     setBusy(true);
     setError(null);
-    // On success the browser leaves the page; busy stays on until then.
-    loginWithTelegram().catch((e: unknown) => {
-      setError(errorText(e));
+    requestCode()
+      .then((expiresAt) => setSent(expiresAt))
+      .catch((e: unknown) => setError(errorText(e)))
+      .finally(() => setBusy(false));
+  };
+
+  const submitCode = (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    loginWithCode(code).catch((err: unknown) => {
+      setError(errorText(err));
       setBusy(false);
     });
   };
@@ -48,18 +58,36 @@ export function LoginScreen() {
           Вход через Telegram: пускаем только владельца школы и учителей (админов групп с подписью
           teacher). Студентам сюда не нужно — у них Mini App.
         </span>
-        <Button
-          variant="primary"
-          size="lg"
-          icon="send"
-          onClick={signIn}
-          disabled={busy || returning}
-        >
-          Войти через Telegram
-        </Button>
-        {busy ? <span className="ad-sub">Переходим в Telegram…</span> : null}
-        {returning ? <span className="ad-sub">Проверяем ответ Telegram…</span> : null}
-        {returnError ? <Callout tone="bad">{returnError}</Callout> : null}
+        <form onSubmit={submitCode} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <TextField
+            label="Код из Telegram"
+            placeholder="123 456"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={7}
+            hint={
+              sent
+                ? `Код отправлен владельцу в Telegram, действует до ${sent.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.`
+                : 'Владелец: нажмите «Прислать код», бот напишет вам в Telegram. Учитель: напишите боту любое сообщение — он ответит кодом.'
+            }
+          />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button
+              variant="primary"
+              size="md"
+              type="submit"
+              icon="check"
+              disabled={busy || code.replace(/\D/g, '').length !== 6}
+            >
+              Войти
+            </Button>
+            <Button variant="secondary" size="md" icon="send" onClick={askCode} disabled={busy}>
+              {sent ? 'Прислать ещё раз' : 'Прислать код в Telegram'}
+            </Button>
+          </div>
+        </form>
         {error ? <Callout tone="bad">{error}</Callout> : null}
 
         <details>

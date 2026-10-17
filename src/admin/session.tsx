@@ -1,17 +1,8 @@
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import type { ApiRole } from '../api/types';
 import { apiBaseUrl } from '../lib/api-url';
 import { type AdminApi, HttpAdminApi } from './api';
 import { MockAdminApi } from './mock';
-import { startTelegramLogin, takeTelegramReturn } from './telegram-login';
 
 const TOKEN_KEY = 'thinkread.admin.token';
 const USER_KEY = 'thinkread.admin.user';
@@ -72,12 +63,10 @@ interface SessionValue {
   api: AdminApi;
   state: SessionState;
   apiUrl: string;
-  /** Sends the browser to Telegram (authorization code + PKCE); the page comes back with `?code`. */
-  loginWithTelegram: () => Promise<void>;
-  /** Set while the code Telegram sent back is being exchanged on the backend. */
-  returning: boolean;
-  /** Why the return from Telegram failed (state mismatch, access denied, backend refusal). */
-  returnError: string | null;
+  /** Asks the bot to send the owner a one-time code in Telegram; resolves with its expiry. */
+  requestCode: () => Promise<Date>;
+  /** The 6-digit code from the bot → POST /auth/code/verify → signed in. */
+  loginWithCode: (code: string) => Promise<void>;
   /** Developer path: a JWT from `pnpm dev:token owner|teacher <id>`. */
   loginWithToken: (token: string, name?: string) => void;
   startDemo: (role: 'OWNER' | 'TEACHER') => void;
@@ -146,36 +135,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState({ kind: 'signed-in', user, demo: false });
   }, []);
 
-  const loginWithTelegram = useCallback(async () => {
+  const requestCode = useCallback(async () => {
     const http = new HttpAdminApi(apiUrl, () => null);
-    const { clientId } = await http.auth.loginConfig();
-    await startTelegramLogin(clientId);
+    const { expiresAt } = await http.auth.requestCode();
+    return new Date(expiresAt);
   }, [apiUrl]);
 
-  // Back from Telegram: swap the code for a session, once, on page load.
-  const [returning, setReturning] = useState(false);
-  const [returnError, setReturnError] = useState<string | null>(null);
-  useEffect(() => {
-    let back;
-    try {
-      back = takeTelegramReturn();
-    } catch (e) {
-      setReturnError(e instanceof Error ? e.message : String(e));
-      return;
-    }
-    if (!back) return;
-    setReturning(true);
-    const http = new HttpAdminApi(apiUrl, () => null);
-    http.auth
-      .telegramLogin({
-        code: back.code,
-        code_verifier: back.codeVerifier,
-        redirect_uri: back.redirectUri,
-      })
-      .then((res) => loginWithToken(res.token, res.name ?? undefined))
-      .catch((e: unknown) => setReturnError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setReturning(false));
-  }, [apiUrl, loginWithToken]);
+  const loginWithCode = useCallback(
+    async (code: string) => {
+      const http = new HttpAdminApi(apiUrl, () => null);
+      const res = await http.auth.verifyCode(code);
+      loginWithToken(res.token, res.name ?? undefined);
+    },
+    [apiUrl, loginWithToken],
+  );
 
   const startDemo = useCallback((r: 'OWNER' | 'TEACHER') => {
     const user: StaffUser =
@@ -192,24 +165,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       api,
       state,
       apiUrl,
-      loginWithTelegram,
-      returning,
-      returnError,
+      requestCode,
+      loginWithCode,
       loginWithToken,
       startDemo,
       signOut,
     }),
-    [
-      api,
-      state,
-      apiUrl,
-      loginWithTelegram,
-      returning,
-      returnError,
-      loginWithToken,
-      startDemo,
-      signOut,
-    ],
+    [api, state, apiUrl, requestCode, loginWithCode, loginWithToken, startDemo, signOut],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -41,10 +41,8 @@ commands), root directory `/`. Environment variables:
 
 Every push to `main` redeploys. The Mini App is the site root (`https://<project>.vercel.app/`), the
 dashboard is `…/admin.html`. Then in the backend set `WEBAPP_URL` to the site root and
-`CORS_ORIGINS` to the origin (the bot sets its own menu button from `WEBAPP_URL`). For the
-dashboard sign-in, in @BotFather: Bot Settings → Login Widget → switch to **OpenID Connect**,
-trusted origin = `https://<project>.vercel.app`, redirect URL = `https://<project>.vercel.app/admin.html`.
-At run time `?api=https://…` in the page URL overrides the API
+`CORS_ORIGINS` to the origin (the bot sets its own menu button from `WEBAPP_URL`; the dashboard
+signs in with a code the bot sends, so BotFather needs nothing else). At run time `?api=https://…` in the page URL overrides the API
 address (remembered in localStorage; `?api=` forgets it) — handy for a local backend behind a
 tunnel. `.github/workflows/pages.yml` (manual run) is a fallback on GitHub Pages.
 
@@ -53,11 +51,10 @@ tunnel. `.github/workflows/pages.yml` (manual run) is a fallback on GitHub Pages
 `http://localhost:5173/admin.html` — the web dashboard for Рустам and the teachers, on the same
 design system and the `/admin/*` API (`src/admin/api.ts` mirrors `admin/serializers.ts`).
 
-- **Sign-in**: «Войти через Telegram» sends the browser to `oauth.telegram.org/auth`
-  (authorization code + PKCE, `src/admin/telegram-login.ts`; the client id comes from
-  `GET /auth/login-config`); Telegram redirects back to `admin.html?code=…&state=…` and the code
-  goes to `POST /auth/telegram-login`; only OWNER / TEACHER get a JWT (kept in localStorage).
-  BotFather must list `<origin>/admin.html` as the redirect URL. For local work paste a token from `pnpm dev:token owner` into «Войти по токену
+- **Sign-in**: a one-time 6-digit code the bot sends in Telegram — «Прислать код» calls
+  `POST /auth/code/request` (the owner gets a DM), a teacher writes anything to the bot and gets
+  one back; the code goes to `POST /auth/code/verify` and only OWNER / TEACHER get a JWT (kept in
+  localStorage). Nothing to configure in BotFather. For local work paste a token from `pnpm dev:token owner` into «Войти по токену
   разработчика». **Demo**: the «Демо» buttons, `?demo=1` or `VITE_DEMO=1` run `MockAdminApi`
   (`src/admin/mock.ts`) — the school of the artboards, no backend.
 - **Screens** (`src/admin/screens/`): Overview (norm rates, health by group, 8-week chart, top
