@@ -3,7 +3,11 @@ import type { ApiRole } from '../api/types';
 import { apiBaseUrl } from '../lib/api-url';
 import { type AdminApi, HttpAdminApi } from './api';
 import { MockAdminApi } from './mock';
-import { signInWithTelegram } from './telegram-login';
+import {
+  openTelegramLogin,
+  prepareTelegramLogin as preloadTelegramLogin,
+  telegramLoginReady,
+} from './telegram-login';
 
 const TOKEN_KEY = 'thinkread.admin.token';
 const USER_KEY = 'thinkread.admin.user';
@@ -64,6 +68,8 @@ interface SessionValue {
   api: AdminApi;
   state: SessionState;
   apiUrl: string;
+  /** Preload Telegram's library and the client id, so the click can open the popup at once. */
+  prepareTelegramLogin: () => Promise<void>;
   /** "Log in with Telegram" popup → id_token → POST /auth/telegram-login. */
   loginWithTelegram: () => Promise<void>;
   /** Developer path: a JWT from `pnpm dev:token owner|teacher <id>`. */
@@ -134,14 +140,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState({ kind: 'signed-in', user, demo: false });
   }, []);
 
-  const loginWithTelegram = useCallback(async () => {
+  const prepareTelegramLogin = useCallback(() => {
     const http = new HttpAdminApi(apiUrl, () => null);
-    const { clientId } = await http.auth.loginConfig();
-    const idToken = await signInWithTelegram(clientId);
+    return preloadTelegramLogin(() => http.auth.loginConfig().then((c) => c.clientId));
+  }, [apiUrl]);
+
+  const loginWithTelegram = useCallback(async () => {
+    // No await before openTelegramLogin() once prepared: the popup must open inside the click.
+    if (!telegramLoginReady()) await prepareTelegramLogin();
+    const idToken = await openTelegramLogin();
     if (!idToken) return;
+    const http = new HttpAdminApi(apiUrl, () => null);
     const res = await http.auth.telegramLogin({ id_token: idToken });
     loginWithToken(res.token, res.name ?? undefined);
-  }, [apiUrl, loginWithToken]);
+  }, [apiUrl, prepareTelegramLogin, loginWithToken]);
 
   const startDemo = useCallback((r: 'OWNER' | 'TEACHER') => {
     const user: StaffUser =
@@ -158,12 +170,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       api,
       state,
       apiUrl,
+      prepareTelegramLogin,
       loginWithTelegram,
       loginWithToken,
       startDemo,
       signOut,
     }),
-    [api, state, apiUrl, loginWithTelegram, loginWithToken, startDemo, signOut],
+    [
+      api,
+      state,
+      apiUrl,
+      prepareTelegramLogin,
+      loginWithTelegram,
+      loginWithToken,
+      startDemo,
+      signOut,
+    ],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

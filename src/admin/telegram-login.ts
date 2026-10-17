@@ -56,18 +56,37 @@ export class PopupBlockedError extends Error {
   }
 }
 
-/** Opens the popup; resolves with the id_token, or null when the user closed it. */
-export async function signInWithTelegram(clientId: string): Promise<string | null> {
-  const api = await loadTelegramLogin();
+let prepared: { api: TelegramLoginApi; clientId: string } | null = null;
+
+/**
+ * Load the library and the client id ahead of the click: browsers allow `window.open` only
+ * synchronously inside a user gesture, so nothing may be awaited between the click and `auth()`.
+ */
+export async function prepareTelegramLogin(clientId: () => Promise<string>): Promise<void> {
+  if (prepared) return;
+  const [api, id] = await Promise.all([loadTelegramLogin(), clientId()]);
+  prepared = { api, clientId: id };
+}
+
+export function telegramLoginReady(): boolean {
+  return prepared !== null;
+}
+
+/**
+ * Opens the popup synchronously (call it directly from the click handler, after
+ * `prepareTelegramLogin`); resolves with the id_token, or null when the user closed the window.
+ */
+export function openTelegramLogin(): Promise<string | null> {
+  if (!prepared) return Promise.reject(new Error('Вход Telegram ещё не готов, нажмите ещё раз.'));
+  const { api, clientId } = prepared;
   const original = window.location.pathname + window.location.search + window.location.hash;
   const clean = window.location.pathname;
-  let opened: Window | null | undefined;
   const nativeOpen = window.open;
   try {
     if (original !== clean) history.replaceState(history.state, '', clean);
-    return await new Promise<string | null>((resolve, reject) => {
+    return new Promise<string | null>((resolve, reject) => {
       window.open = (...args: Parameters<typeof window.open>): Window | null => {
-        opened = nativeOpen.apply(window, args);
+        const opened = nativeOpen.apply(window, args);
         if (opened === null) reject(new PopupBlockedError());
         return opened;
       };

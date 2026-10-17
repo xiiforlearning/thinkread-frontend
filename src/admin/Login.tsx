@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Button, Callout, Card, TextField } from '../ui/components';
 import { errorText } from './Shell';
 import { useSession } from './session';
@@ -9,7 +9,8 @@ import { useSession } from './session';
  * the demo on in-memory data.
  */
 export function LoginScreen() {
-  const { apiUrl, loginWithTelegram, loginWithToken, startDemo } = useSession();
+  const { apiUrl, prepareTelegramLogin, loginWithTelegram, loginWithToken, startDemo } =
+    useSession();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState('');
@@ -19,6 +20,11 @@ export function LoginScreen() {
     import.meta.env.DEV ||
     import.meta.env.VITE_DEMO === '1' ||
     new URLSearchParams(window.location.search).has('demo');
+
+  // Preload the Telegram library and the client id: the popup must open synchronously on click.
+  useEffect(() => {
+    prepareTelegramLogin().catch(() => undefined);
+  }, [prepareTelegramLogin]);
 
   const signIn = () => {
     setBusy(true);
