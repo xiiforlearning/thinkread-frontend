@@ -204,42 +204,69 @@
   }
 }
 
-/* Phone (the dashboard opened from the Mini App): a compact top bar, tables scroll sideways
-   instead of squeezing their columns, forms go single-column. */
+/* Phone (the dashboard opened from the Mini App): a top bar with a burger, the sidebar as a
+   drawer, tables scroll sideways instead of squeezing their columns, forms go single-column. */
+.ad-topbar {
+  display: none;
+}
+.ad-backdrop {
+  display: none;
+}
 @media (max-width: 640px) {
-  .ad-side {
-    flex-direction: row;
-    flex-wrap: wrap;
+  .ad-topbar {
+    display: flex;
     align-items: center;
-    gap: 2px 4px;
-    padding: 10px 10px 8px;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--hero);
+    color: var(--on-hero);
+    position: sticky;
+    top: 0;
+    z-index: 30;
   }
-  .ad-brand {
-    width: 100%;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 8px;
-    padding: 0 8px 6px;
+  .ad-topbar b {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
-  .ad-brand b {
-    font-size: 18px;
+  .ad-topbar-sub {
+    font-size: 12px;
+    color: var(--on-hero-muted);
   }
-  .ad-side > div[style] {
-    display: none; /* the sidebar's spacer */
+  .ad-burger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--hero-overlay);
+    color: var(--on-hero);
+    cursor: pointer;
   }
-  .ad-side .tr-nav {
-    width: auto;
-    padding: 7px 10px;
-    font-size: 13px;
-    gap: 6px;
+  .ad-side {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(300px, 84vw);
+    height: 100dvh;
+    z-index: 40;
+    transform: translateX(-104%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+    overflow-y: auto;
   }
-  .ad-side .tr-nav-label {
-    flex-grow: 0;
+  .ad-side-open {
+    transform: none;
   }
-  .ad-user {
-    width: 100%;
-    margin-top: 6px;
-    padding: 8px 8px 0;
+  .ad-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(0, 0, 0, 0.45);
   }
   .ad-main {
     padding: 12px 12px 32px;
@@ -269,9 +296,14 @@
   .ad-row {
     min-width: 720px;
   }
-  /* Page headers: the title row wraps so the controls drop under the title. */
+  /* Page headers: the controls drop under the title. */
   .ad-main > div {
     flex-wrap: wrap;
+  }
+  .ad-head {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
   }
   .ad-form {
     grid-template-columns: minmax(0, 1fr) !important;

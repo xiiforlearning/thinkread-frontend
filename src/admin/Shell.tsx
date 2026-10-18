@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ApiError } from '../api/types';
 import { Avatar, Badge, Button, Callout, Icon, NavItem } from '../ui/components';
@@ -25,9 +25,28 @@ export function Shell({ pane, children }: { pane?: ReactNode; children: ReactNod
   const demo = state.kind === 'signed-in' && state.demo;
   const is = (p: string) => (p === '/' ? pathname === '/' : pathname.startsWith(p));
   const webapp = (import.meta.env.BASE_URL ?? './').replace(/\/?$/, '/') + (demo ? '?demo=1' : '');
+  // Phone: the sidebar is a drawer behind a burger button; it closes on navigation.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
   return (
     <div className="tr tr-desktop ad-app">
-      <aside className="ad-side">
+      <header className="ad-topbar">
+        <button
+          type="button"
+          className="ad-burger"
+          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <Icon name={menuOpen ? 'close' : 'menu'} />
+        </button>
+        <b>ThinkRead</b>
+        <span className="ad-topbar-sub">Дашборд</span>
+      </header>
+      {menuOpen ? (
+        <div className="ad-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      ) : null}
+      <aside className={menuOpen ? 'ad-side ad-side-open' : 'ad-side'}>
         <div className="ad-brand">
           <b>ThinkRead</b>
           <span>Дашборд учителя</span>
@@ -90,7 +109,7 @@ export function PageHead({
   size?: 'lg' | 'md';
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+    <div className="ad-head" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
       <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
         {size === 'lg' ? <h1 className="ad-h1">{title}</h1> : <h2 className="ad-h2">{title}</h2>}
         {subtitle ? <span className="ad-sub">{subtitle}</span> : null}
