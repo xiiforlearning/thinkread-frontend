@@ -174,7 +174,8 @@ export interface Report {
   secondPassPct: number | null;
   listenCount: number | null;
   unclearParts: string | null;
-  wordsAdded: string[];
+  /** How many new words this report put into the dictionary (`reports.words_added`). */
+  wordsAdded: number;
   weekStart: string;
   createdAt: string;
 }
@@ -195,7 +196,8 @@ export type IntakeResult =
       status: 'SAVED';
       report: Report;
       weekProgress: Week;
-      words: { added: number; existing: number };
+      /** The words of the report: new ones (now in the dictionary) and the ones the student already had. */
+      words: { added: string[]; alreadyHad: string[] };
     };
 
 export interface Recommendation {

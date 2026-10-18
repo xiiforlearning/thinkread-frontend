@@ -17,7 +17,20 @@
     <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Replaced by React on mount; stays visible when the script never ran. -->
+      <p id="boot" style="font-family: system-ui; padding: 48px 24px; opacity: 0.7">
+        Загружаю ThinkRead… Если надпись не исчезает, закройте и откройте приложение заново.
+      </p>
+    </div>
+    <script>
+      window.addEventListener('error', function (e) {
+        var boot = document.getElementById('boot');
+        if (!boot) return;
+        var what = e.message || (e.target && e.target.src ? 'не загрузился ' + e.target.src : 'ошибка');
+        boot.textContent = 'ThinkRead не запустился: ' + what + '. Закройте и откройте приложение заново; если повторяется, пришлите этот текст.';
+      }, true);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@ import { fmtDay, fmtWeek, words } from '../lib/dates';
 import { Button, Cell, ListGroup, NormCell, SegmentedControl } from '../ui/components';
 
 function subtitle(r: Report): string {
-  const w = r.wordsAdded.length ? ` · +${words(r.wordsAdded.length)}` : '';
+  const w = r.wordsAdded ? ` · +${words(r.wordsAdded)}` : '';
   if (r.type === 'READING') return `Чтение${r.pages ? ` · ${r.pages} стр.` : ''}${w}`;
   const pct =
     r.firstPassPct !== null

@@ -352,9 +352,14 @@ function healthOf(s: S, thresholds: { warn: number; bad: number }, archived: boo
   return 'good';
 }
 
+/** The words each demo report added — the API keeps only the count on the report itself. */
+const REPORT_WORDS = new Map<string, string[]>();
+
 function reading(d: Date, book: string, pages: number, text: string, words: string[]): AdminReport {
+  const id = uid();
+  REPORT_WORDS.set(id, words);
   return {
-    id: uid(),
+    id,
     type: 'READING',
     method: null,
     sourceTitle: book,
@@ -365,7 +370,7 @@ function reading(d: Date, book: string, pages: number, text: string, words: stri
     secondPassPct: null,
     listenCount: null,
     unclearParts: null,
-    wordsAdded: words,
+    wordsAdded: words.length,
     weekStart: isoDay(monday(d)),
     createdAt: d.toISOString(),
     rawText: `прочитал ${pages} страниц ${book}, ${text.toLowerCase()}, слова: ${words.join(', ')}`,
@@ -383,8 +388,10 @@ function listening(
   raw?: string,
   forwarded = false,
 ): AdminReport {
+  const id = uid();
+  REPORT_WORDS.set(id, words);
   return {
-    id: uid(),
+    id,
     type: 'LISTENING',
     method: 'PODCAST_NO_TRANSCRIPT',
     sourceTitle: title,
@@ -395,7 +402,7 @@ function listening(
     secondPassPct: second,
     listenCount: times,
     unclearParts: null,
-    wordsAdded: words,
+    wordsAdded: words.length,
     weekStart: isoDay(monday(d)),
     createdAt: d.toISOString(),
     rawText:
@@ -1161,7 +1168,9 @@ export class MockAdminApi implements AdminApi {
     words: async (id) => {
       await delay();
       const s = this.find(id);
-      const words = (REPORTS[id] ?? []).flatMap((r) => r.wordsAdded.map((w) => ({ w, r })));
+      const words = (REPORTS[id] ?? []).flatMap((r) =>
+        (REPORT_WORDS.get(r.id) ?? []).map((w) => ({ w, r })),
+      );
       return words
         .map(({ w, r }, i): Word => ({
           id: uid(),

@@ -327,9 +327,11 @@ function ResultView({
   const r = result.report;
   const listening = r.type === 'LISTENING';
   const w = result.weekProgress;
+  const added = result.words.added;
+  const plus = added.length ? `, +${words(added.length)}` : '';
   const head = listening
-    ? `Аудирование ${w.listening.done}/${w.listening.norm} на этой неделе${result.words.added ? `, +${words(result.words.added)}` : ''}`
-    : `Чтение ${w.reading.done}/${w.reading.norm} на этой неделе${result.words.added ? `, +${words(result.words.added)}` : ''}`;
+    ? `Аудирование ${w.listening.done}/${w.listening.norm} на этой неделе${plus}`
+    : `Чтение ${w.reading.done}/${w.reading.norm} на этой неделе${plus}`;
   const num = (v: string): number | undefined => (v === '' ? undefined : Number(v));
   return (
     <>
@@ -382,11 +384,20 @@ function ResultView({
           )}
         </div>
         <span className="tr-field-label">
-          {r.wordsAdded.length ? 'Новые слова · попали в словарь' : 'Новых слов в отчёте не было'}
+          {added.length
+            ? 'Новые слова · попали в словарь'
+            : result.words.alreadyHad.length
+              ? 'Слова из отчёта уже были в словаре'
+              : 'Новых слов в отчёте не было'}
         </span>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {r.wordsAdded.map((x) => (
+          {added.map((x) => (
             <Badge key={x} tone="brand">
+              {x}
+            </Badge>
+          ))}
+          {result.words.alreadyHad.map((x) => (
+            <Badge key={`had-${x}`} tone="neutral">
               {x}
             </Badge>
           ))}

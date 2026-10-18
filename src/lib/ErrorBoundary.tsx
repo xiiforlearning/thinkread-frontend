@@ -6,11 +6,17 @@ interface State {
 
 const SESSION_KEYS = ['thinkread.admin.token', 'thinkread.admin.user', 'thinkread.admin.demo'];
 
+interface Props {
+  children: ReactNode;
+  /** What the person sees as the heading, e.g. «Дашборд не смог отрисоваться». */
+  title: string;
+}
+
 /**
  * The last line of defence: a render error must never leave an empty page. Plain markup on
  * purpose — the design system itself may be what failed.
  */
-export class RootErrorBoundary extends Component<{ children: ReactNode }, State> {
+export class RootErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -24,6 +30,7 @@ export class RootErrorBoundary extends Component<{ children: ReactNode }, State>
   private reset = (): void => {
     try {
       for (const k of SESSION_KEYS) localStorage.removeItem(k);
+      sessionStorage.clear();
     } catch {
       /* ignore */
     }
@@ -35,7 +42,7 @@ export class RootErrorBoundary extends Component<{ children: ReactNode }, State>
     if (!error) return this.props.children;
     return (
       <div style={{ maxWidth: 640, margin: '48px auto', padding: 24, fontFamily: 'system-ui' }}>
-        <h1 style={{ fontSize: 20, margin: '0 0 12px' }}>Дашборд не смог отрисоваться</h1>
+        <h1 style={{ fontSize: 20, margin: '0 0 12px' }}>{this.props.title}</h1>
         <p style={{ margin: '0 0 12px', opacity: 0.8 }}>
           Пришлите этот текст разработчику — он показывает, где именно сломалось.
         </p>

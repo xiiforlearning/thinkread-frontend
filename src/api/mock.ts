@@ -245,7 +245,7 @@ export class MockApi implements Api {
         secondPassPct: null,
         listenCount: null,
         unclearParts: null,
-        wordsAdded: words,
+        wordsAdded: words.length,
         createdAt: date.toISOString(),
       });
     const listening = (
@@ -268,7 +268,7 @@ export class MockApi implements Api {
         secondPassPct: b,
         listenCount: count,
         unclearParts: 'sleep debt',
-        wordsAdded: words,
+        wordsAdded: words.length,
         createdAt: date.toISOString(),
       });
 
@@ -433,7 +433,7 @@ export class MockApi implements Api {
       secondPassPct: type === 'LISTENING' ? (pct[1] ?? 88) : null,
       listenCount: type === 'LISTENING' ? Number(text.match(/(\d+)\s*раз/i)?.[1] ?? 3) : null,
       unclearParts: null,
-      wordsAdded: addedWords,
+      wordsAdded: addedWords.length,
       weekStart: isoDay(startOfWeek(n)),
       createdAt: n.toISOString(),
     };
@@ -442,7 +442,7 @@ export class MockApi implements Api {
       status: 'SAVED',
       report,
       weekProgress: this.weekOf(startOfWeek(n)),
-      words: { added: addedWords.length, existing: words.length - addedWords.length },
+      words: { added: addedWords, alreadyHad: words.filter((x) => !addedWords.includes(x)) },
     };
   }
 

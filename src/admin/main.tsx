@@ -6,7 +6,7 @@ import '../ui/app.css';
 import '../ui/admin.css';
 import { colorScheme, insideTelegram, setupWebApp } from '../telegram/webapp';
 import App from './App';
-import { RootErrorBoundary } from './ErrorBoundary';
+import { RootErrorBoundary } from '../lib/ErrorBoundary';
 
 // Inside the Telegram Mini App (the owner opened the dashboard from the app): tell Telegram we
 // are ready, expand, and mark the document so the layout keeps clear of Telegram's header.
@@ -35,7 +35,7 @@ scheme.addEventListener('change', applyTheme);
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <RootErrorBoundary>
+    <RootErrorBoundary title="Дашборд не смог отрисоваться">
       <App />
     </RootErrorBoundary>
   </StrictMode>,
