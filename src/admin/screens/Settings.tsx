@@ -131,6 +131,7 @@ export function SettingsScreen() {
         <div className="ad-grid ad-grid-2">
           <Card desktop title="Нормы" meta="неделя пн–вс, Asia/Tashkent">
             <div
+              className="ad-form"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
@@ -143,6 +144,7 @@ export function SettingsScreen() {
               {field('norms.cardsPerDay', 'Карточек в день')}
             </div>
             <div
+              className="ad-form"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -160,6 +162,7 @@ export function SettingsScreen() {
 
           <Card desktop title="Напоминания и AI">
             <div
+              className="ad-form"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -190,6 +193,7 @@ export function SettingsScreen() {
             meta="одна функция для дашборда, Mini App и сводки"
           >
             <div
+              className="ad-form"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
@@ -372,7 +376,7 @@ function StaffCard() {
       ))}
       {adding ? (
         <div
-          className="tr-cell tr-cell-static"
+          className="tr-cell tr-cell-static ad-form"
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr auto',

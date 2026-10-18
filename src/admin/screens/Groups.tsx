@@ -208,6 +208,7 @@ function GroupRow({
   return (
     <div className="tr-cell tr-cell-static" style={{ paddingTop: 8, paddingBottom: 8 }}>
       <div
+        className="ad-row"
         style={{
           display: 'grid',
           gridTemplateColumns: COLS,

@@ -541,7 +541,7 @@ function WordsTable({ words }: { words: Word[] }) {
   if (words.length === 0)
     return <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>Словарь пуст.</span>;
   return (
-    <div>
+    <div className="ad-scroll">
       <div
         className="ad-table ad-table-head"
         style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 70px 80px 90px' }}

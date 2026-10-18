@@ -203,6 +203,80 @@
     padding: 16px;
   }
 }
+
+/* Phone (the dashboard opened from the Mini App): a compact top bar, tables scroll sideways
+   instead of squeezing their columns, forms go single-column. */
+@media (max-width: 640px) {
+  .ad-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 4px;
+    padding: 10px 10px 8px;
+  }
+  .ad-brand {
+    width: 100%;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    padding: 0 8px 6px;
+  }
+  .ad-brand b {
+    font-size: 18px;
+  }
+  .ad-side > div[style] {
+    display: none; /* the sidebar's spacer */
+  }
+  .ad-side .tr-nav {
+    width: auto;
+    padding: 7px 10px;
+    font-size: 13px;
+    gap: 6px;
+  }
+  .ad-side .tr-nav-label {
+    flex-grow: 0;
+  }
+  .ad-user {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 8px 0;
+  }
+  .ad-main {
+    padding: 12px 12px 32px;
+  }
+  .ad-h1 {
+    font-size: 22px;
+    line-height: 26px;
+  }
+  .ad-grid-5,
+  .ad-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ad-pane-head {
+    padding: 16px 12px 10px;
+  }
+  /* Tables keep their column widths and scroll inside the card / list. */
+  .tr-card-desktop,
+  .tr-group-desktop,
+  .ad-pane-list,
+  .ad-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ad-table {
+    min-width: 600px;
+  }
+  .ad-row {
+    min-width: 720px;
+  }
+  /* Page headers: the title row wraps so the controls drop under the title. */
+  .ad-main > div {
+    flex-wrap: wrap;
+  }
+  .ad-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
 .ad-dim {
   opacity: 0.55;
 }
