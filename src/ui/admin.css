@@ -1,4 +1,21 @@
 /* Dashboard layout: dark sidebar + scrolling main, optional list pane (Students, Flags). */
+/* Inside the Telegram Mini App (html.tg-inside) Telegram's header and the status bar sit over
+   the top of the page: the SDK publishes their height as CSS variables, iOS as env(). */
+:root {
+  --ad-top-inset: calc(
+    max(env(safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px)) +
+      var(--tg-content-safe-area-inset-top, 0px)
+  );
+}
+.tg-inside .ad-side {
+  padding-top: calc(24px + var(--ad-top-inset));
+}
+.tg-inside .ad-login {
+  padding-top: calc(24px + var(--ad-top-inset));
+}
+.tg-inside .ad-main {
+  padding-top: calc(20px + var(--ad-top-inset));
+}
 .ad-app {
   display: flex;
   min-height: 100dvh;
@@ -218,6 +235,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
+    padding-top: calc(10px + var(--ad-top-inset));
     background: var(--hero);
     color: var(--on-hero);
     position: sticky;
@@ -268,8 +286,9 @@
     z-index: 35;
     background: rgba(0, 0, 0, 0.45);
   }
-  .ad-main {
-    padding: 12px 12px 32px;
+  .ad-main,
+  .tg-inside .ad-main {
+    padding: 12px 12px 32px; /* the top bar already carries the inset */
   }
   .ad-h1 {
     font-size: 22px;

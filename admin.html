@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <title>ThinkRead · Дашборд</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -11,6 +11,9 @@
       href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <!-- The dashboard is also opened inside the Telegram Mini App: the SDK reports the safe areas
+         under Telegram's own header, so our top bar and drawer can stay clear of it. -->
+    <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
   </head>
   <body>
     <div id="root">
