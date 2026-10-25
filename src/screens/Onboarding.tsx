@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, ERR } from '../api/types';
 import { useProfile } from '../app/hooks';
@@ -24,6 +24,14 @@ export function OnboardingScreen() {
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [touched, setTouched] = useState(false);
+  // Students migrated from the old bot come with a prefilled name: they only confirm or fix it.
+  useEffect(() => {
+    const p = profile.data;
+    if (!p || touched) return;
+    if (p.firstName && !first) setFirst(p.firstName);
+    if (p.lastName && !last) setLast(p.lastName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed the form once from the profile
+  }, [profile.data]);
 
   const ok = valid(first) && valid(last);
   const invalid = touched && (first.trim().length > 1 || last.trim().length > 1) && !ok;
