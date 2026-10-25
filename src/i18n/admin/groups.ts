@@ -45,6 +45,9 @@ export const groupsDict = defineDict({
     weekTitle: 'чтение {reading} · аудирование {listening}',
     active: 'активна',
     inactive: 'неактивна',
+    deactivate: 'Убрать',
+    deactivateConfirm:
+      'Убрать группу «{title}» из ThinkRead? Она исчезнет из списков и проверок; студенты только этой группы при следующей проверке уйдут в архив. Если бота снова добавят в чат, группа вернётся сама.',
     allStudents: 'Все студенты',
     scopeLevel: 'Уровень {level}',
     scopeGroup: 'Группа',
@@ -110,6 +113,9 @@ export const groupsDict = defineDict({
     weekTitle: 'reading {reading} · listening {listening}',
     active: 'active',
     inactive: 'inactive',
+    deactivate: 'Remove',
+    deactivateConfirm:
+      'Remove the group “{title}” from ThinkRead? It leaves the lists and the checks; students of this group only are archived at the next check. If the bot is added to the chat again, the group comes back by itself.',
     allStudents: 'All students',
     scopeLevel: 'Level {level}',
     scopeGroup: 'Group',

@@ -47,6 +47,16 @@ export function GroupsScreen() {
       void qc.invalidateQueries({ queryKey: ['groups'] });
     },
   });
+  const deactivate = useMutation({
+    mutationFn: (chatId: number) => api.groups.deactivate(chatId),
+    onSuccess: (g) => {
+      qc.setQueryData<GroupView[]>(['groups'], (list) =>
+        list?.filter((x) => x.chatId !== g.chatId),
+      );
+      void qc.invalidateQueries({ queryKey: ['groups'] });
+      void qc.invalidateQueries({ queryKey: ['overview'] });
+    },
+  });
   const run = useMutation({
     mutationFn: () => api.groups.runCheck(),
     onSuccess: () =>
@@ -69,6 +79,7 @@ export function GroupsScreen() {
       {groups.isLoading ? <Loading /> : null}
       {groups.error ? <ErrorBox error={groups.error} retry={() => groups.refetch()} /> : null}
       {setLevel.error ? <Callout tone="bad">{errorText(setLevel.error)}</Callout> : null}
+      {deactivate.error ? <Callout tone="bad">{errorText(deactivate.error)}</Callout> : null}
       {groups.data ? (
         <ListGroup desktop>
           <div className="tr-cell tr-cell-static" style={{ paddingTop: 10, paddingBottom: 10 }}>
@@ -95,6 +106,11 @@ export function GroupsScreen() {
               owner={owner}
               busy={setLevel.isPending && setLevel.variables?.chatId === g.chatId}
               onLevel={(level) => setLevel.mutate({ chatId: g.chatId, level })}
+              removing={deactivate.isPending && deactivate.variables === g.chatId}
+              onDeactivate={() => {
+                if (window.confirm(t('deactivateConfirm', { title: g.title })))
+                  deactivate.mutate(g.chatId);
+              }}
             />
           ))}
         </ListGroup>
@@ -203,11 +219,15 @@ function GroupRow({
   owner,
   busy,
   onLevel,
+  removing,
+  onDeactivate,
 }: {
   g: GroupView;
   owner: boolean;
   busy: boolean;
   onLevel: (l: GroupLevel) => void;
+  removing: boolean;
+  onDeactivate: () => void;
 }) {
   const t = useT(groupsDict);
   const rate = g.week ? (g.week.reading + g.week.listening) / 2 : 0;
@@ -271,9 +291,15 @@ function GroupRow({
             {pct(rate)}
           </span>
         </span>
-        <Badge tone={g.isActive ? 'good' : 'warn'}>
-          {g.isActive ? t('active') : t('inactive')}
-        </Badge>
+        {owner ? (
+          <Button variant="ghost" size="sm" loading={removing} onClick={onDeactivate}>
+            {t('deactivate')}
+          </Button>
+        ) : (
+          <Badge tone={g.isActive ? 'good' : 'warn'}>
+            {g.isActive ? t('active') : t('inactive')}
+          </Badge>
+        )}
       </div>
     </div>
   );

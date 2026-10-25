@@ -790,6 +790,7 @@ export class MockAdminApi implements AdminApi {
   private archived = new Set<string>();
   private flagStatus = new Map<string, FlagStatus>(FLAGS.map((f) => [f.id, f.status]));
   private levels = new Map<number, GroupLevel>(GROUPS.map((x) => [x.chatId, x.level]));
+  private inactive = new Set<number>();
   private overrides = new Map<string, { value: unknown; updatedAt: string }>();
   private staffRows: StaffMember[] = STAFF.map((s) => ({ ...s }));
   private lists: WordListView[] = [];
@@ -1261,7 +1262,7 @@ export class MockAdminApi implements AdminApi {
       chatId: gr.chatId,
       title: gr.title,
       level: this.levels.get(gr.chatId) ?? gr.level,
-      isActive: true,
+      isActive: !this.inactive.has(gr.chatId),
       members: gr.members,
       teachers: gr.teachers.map((id) => ({ telegramUserId: id, name: staffName.get(id) ?? null })),
       teachersRefreshedAt: daysAgo(1).toISOString(),
@@ -1273,13 +1274,21 @@ export class MockAdminApi implements AdminApi {
   groups: AdminApi['groups'] = {
     list: async () => {
       await delay();
-      return GROUPS.map((gr) => this.groupView(gr));
+      return GROUPS.filter((gr) => !this.inactive.has(gr.chatId)).map((gr) => this.groupView(gr));
     },
     setLevel: async (chatId, level) => {
       this.assertOwner();
       const gr = GROUPS.find((x) => x.chatId === chatId);
       if (!gr) throw new ApiError('202002', 'Группа не найдена.', 404);
       this.levels.set(chatId, level);
+      return this.groupView(gr);
+    },
+    deactivate: async (chatId) => {
+      this.assertOwner();
+      await delay();
+      const gr = GROUPS.find((x) => x.chatId === chatId);
+      if (!gr) throw new ApiError('202002', 'Группа не найдена.', 404);
+      this.inactive.add(chatId);
       return this.groupView(gr);
     },
     membershipChecks: async () => {

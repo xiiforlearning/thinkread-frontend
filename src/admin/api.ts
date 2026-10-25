@@ -322,6 +322,8 @@ export interface AdminApi {
   groups: {
     list(): Promise<GroupView[]>;
     setLevel(chatId: number, level: GroupLevel): Promise<GroupView>;
+    /** Owner: hide a group the bot is no longer in (it comes back by itself when the bot is re-added). */
+    deactivate(chatId: number): Promise<GroupView>;
     membershipChecks(): Promise<MembershipCheck[]>;
     runCheck(): Promise<{ started: boolean; alreadyRunning: boolean }>;
   };
@@ -457,6 +459,7 @@ export class HttpAdminApi implements AdminApi {
   groups: AdminApi['groups'] = {
     list: () => this.call('GET', '/admin/groups'),
     setLevel: (chatId, level) => this.call('PATCH', `/admin/groups/${chatId}`, { level }),
+    deactivate: (chatId) => this.call('PATCH', `/admin/groups/${chatId}`, { isActive: false }),
     membershipChecks: () => this.call('GET', '/admin/membership-checks'),
     runCheck: () => this.call('POST', '/admin/membership-checks/run'),
   };
