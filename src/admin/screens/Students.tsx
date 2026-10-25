@@ -41,7 +41,7 @@ import { appendChat, useChat } from '../chatStore';
 import { Empty, ErrorBox, errorText, Loading, Shell, SoonBadge } from '../Shell';
 import { useAdminApi, useIsOwner } from '../session';
 
-type HealthFilter = 'all' | Health;
+type HealthFilter = 'all' | Health | 'archived';
 
 /** 12 · Студенты: list pane (search, health chips, group) + the selected student's card. */
 export function StudentsScreen() {
@@ -62,7 +62,9 @@ export function StudentsScreen() {
     queryFn: () =>
       api.students.list({
         q: q || undefined,
-        health: health === 'all' ? undefined : health,
+        // 'archived' is a status, not a health: the API hides archived students unless asked
+        health: health === 'all' || health === 'archived' ? undefined : health,
+        status: health === 'archived' ? 'ARCHIVED' : undefined,
         groupChatId: group ? Number(group) : undefined,
       }),
   });
@@ -79,6 +81,7 @@ export function StudentsScreen() {
     ['bad', t('chipBad')],
     ['warn', t('chipWarn')],
     ['good', t('chipGood')],
+    ['archived', t('chipArchived')],
   ];
   const pane = (
     <section className="ad-pane">
