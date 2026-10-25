@@ -5,7 +5,9 @@ import { ApiError, ERR } from '../api/types';
 import { useProfile } from '../app/hooks';
 import { ErrorBox, Screen } from '../app/Shell';
 import { useApi, useSession } from '../app/session';
-import { levelLabel, METHOD_SHORT } from '../lib/labels';
+import { onboardingDict } from '../i18n/screens/onboarding';
+import { useT } from '../i18n/t';
+import { levelLabel, methodShort } from '../lib/labels';
 import { haptic } from '../telegram/webapp';
 import { Callout, Card, Cell, ListGroup, MainButton, TextField } from '../ui/components';
 
@@ -18,6 +20,7 @@ export function OnboardingScreen() {
   const { activate } = useSession();
   const navigate = useNavigate();
   const profile = useProfile();
+  const t = useT(onboardingDict);
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [touched, setTouched] = useState(false);
@@ -47,92 +50,84 @@ export function OnboardingScreen() {
           disabled={!ok || register.isPending}
           onClick={() => register.mutate()}
         >
-          {register.isPending ? 'Сохраняю…' : 'Начать'}
+          {register.isPending ? t('saving') : t('start')}
         </MainButton>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span className="tr-eyebrow tr-eyebrow-brand">Первый вход</span>
-        <h1 className="tr-h1">Привет! Давай познакомимся</h1>
+        <span className="tr-eyebrow tr-eyebrow-brand">{t('eyebrow')}</span>
+        <h1 className="tr-h1">{t('hello')}</h1>
         <span className="tr-body" style={{ color: 'var(--ink-2)' }}>
-          Мы нашли тебя в группе Рустама. Осталось сказать, как тебя зовут — так учитель увидит тебя
-          в списке.
+          {t('intro')}
         </span>
       </div>
 
-      <ListGroup header="Твоя группа">
+      <ListGroup header={t('yourGroup')}>
         <Cell
           tileIcon="users"
           tileTone="brand"
-          title={group?.title ?? profile.data?.groups.map((g) => g.title).join(', ') ?? 'Группа'}
+          title={group?.title ?? profile.data?.groups.map((g) => g.title).join(', ') ?? t('group')}
           subtitle={
             profile.data
-              ? `${levelLabel(profile.data.level)} · ${METHOD_SHORT[profile.data.listeningMethod]}`
+              ? `${levelLabel(profile.data.level)} · ${methodShort(profile.data.listeningMethod)}`
               : '…'
           }
         />
       </ListGroup>
 
-      <Card title="Имя и фамилия" meta="настоящие, не ник">
+      <Card title={t('nameCard')} meta={t('nameMeta')}>
         <TextField
-          label="Имя"
+          label={t('firstName')}
           value={first}
           onChange={(e) => {
             setFirst(e.target.value);
             setTouched(true);
           }}
-          placeholder="Акмаль"
+          placeholder={t('firstPlaceholder')}
           autoComplete="given-name"
           autoCapitalize="words"
         />
         <TextField
-          label="Фамилия"
+          label={t('lastName')}
           value={last}
           onChange={(e) => {
             setLast(e.target.value);
             setTouched(true);
           }}
-          placeholder="Хадиев"
+          placeholder={t('lastPlaceholder')}
           autoComplete="family-name"
           autoCapitalize="words"
-          hint={
-            ok
-              ? `Отлично, ${first.trim()} ${last.trim()}. Можно начинать.`
-              : 'Как в паспорте или как тебя зовут на уроке'
-          }
+          hint={ok ? t('hintOk', { name: `${first.trim()} ${last.trim()}` }) : t('hintDefault')}
         />
         {invalid || nameInvalidFromServer ? (
           <Callout tone="warn" icon="info">
-            Похоже, это не имя и фамилия. Нужны настоящие, только буквы и дефис.
+            {t('invalid')}
           </Callout>
         ) : null}
         {register.error && !nameInvalidFromServer ? <ErrorBox error={register.error} /> : null}
       </Card>
 
-      <ListGroup
-        header="Как это работает"
-        footer="Напоминания будут приходить сообщениями от бота — с кнопкой, которая открывает приложение."
-      >
+      <ListGroup header={t('howHeader')} footer={t('howFooter')}>
         <Cell
           tileIcon="book"
           tileTone="brand"
           tileSize="sm"
-          title="3 отчёта о чтении в неделю"
-          subtitle="Книга, страницы, о чём, новые слова"
+          title={t('readingTitle')}
+          subtitle={t('readingSub')}
         />
         <Cell
           tileIcon="headphones"
           tileTone="listen"
           tileSize="sm"
-          title="3 отчёта об аудировании"
-          subtitle="По методике своего уровня"
+          title={t('listeningTitle')}
+          subtitle={t('listeningSub')}
         />
         <Cell
           tileIcon="cards"
           tileTone="cards"
           tileSize="sm"
-          title="5 карточек в день"
-          subtitle="Слова из твоих отчётов и списков учителя"
+          title={t('cardsTitle')}
+          subtitle={t('cardsSub')}
         />
       </ListGroup>
     </Screen>

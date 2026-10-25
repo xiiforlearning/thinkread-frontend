@@ -37,6 +37,8 @@ export interface Profile {
   calmMode: boolean;
   calmUntil: string | null;
   registeredAt: string | null;
+  /** Interface language the student chose; null until chosen (the app then uses Telegram's). */
+  language: 'ru' | 'en' | null;
 }
 
 export interface NormPart {

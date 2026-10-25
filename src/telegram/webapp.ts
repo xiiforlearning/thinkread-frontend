@@ -14,7 +14,7 @@ interface TgWebApp {
   initData: string;
   initDataUnsafe: {
     start_param?: string;
-    user?: { id: number; first_name?: string; username?: string };
+    user?: { id: number; first_name?: string; username?: string; language_code?: string };
   };
   colorScheme: 'light' | 'dark';
   themeParams: Record<string, string | undefined>;

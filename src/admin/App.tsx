@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { useLang } from '../i18n/lang';
 import { LoginScreen } from './Login';
 import { AssistantScreen } from './screens/Assistant';
 import { FlagsScreen } from './screens/Flags';
@@ -14,6 +15,8 @@ const queryClient = new QueryClient({
 });
 
 function Gate() {
+  // Subscribes the whole dashboard to the language: a switch re-renders every screen.
+  useLang();
   const { state } = useSession();
   if (state.kind !== 'signed-in') return <LoginScreen />;
   const owner = state.user.role === 'OWNER';

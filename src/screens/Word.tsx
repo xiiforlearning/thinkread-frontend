@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { usePatchWord, useWord, useWordPriority } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
+import { wordDict } from '../i18n/screens/word';
+import { useT } from '../i18n/t';
 import { fmtDay } from '../lib/dates';
-import { SOURCE_LABEL } from '../lib/labels';
+import { sourceLabel } from '../lib/labels';
 import { haptic } from '../telegram/webapp';
 import {
   Badge,
@@ -17,11 +19,7 @@ import {
   TextField,
 } from '../ui/components';
 
-const STAGE_NOTE: Record<1 | 2 | 3, string> = {
-  1: 'Один верный ответ на стадии 1 — и слово встретится в предложении. Ошибка ничего не откатывает.',
-  2: 'Один верный ответ на стадии 2 — и слово перейдёт к своему предложению. Ошибка ничего не откатывает.',
-  3: 'Составь с ним своё предложение — и слово уйдёт в выученные.',
-};
+const STAGE_NOTE = { 1: 'stageNote1', 2: 'stageNote2', 3: 'stageNote3' } as const;
 
 /** 04 · Слово */
 export function WordScreen() {
@@ -31,6 +29,7 @@ export function WordScreen() {
   const priority = useWordPriority(id);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const t = useT(wordDict);
 
   const w = word.data;
   if (word.isLoading)
@@ -42,17 +41,14 @@ export function WordScreen() {
   if (!w)
     return (
       <Screen back="/words">
-        <ErrorBox
-          error={word.error ?? new Error('Слово не найдено')}
-          retry={() => word.refetch()}
-        />
+        <ErrorBox error={word.error ?? new Error(t('notFound'))} retry={() => word.refetch()} />
       </Screen>
     );
 
   const learned = w.status === 'LEARNED';
   const prio = w.priority === 'HIGH' && !learned;
-  const source = SOURCE_LABEL[w.source];
-  const sourceSub = `${fmtDay(w.createdAt)}${w.source === 'MANUAL' || w.source === 'IMPORT' || w.source === 'TEACHER' ? ' · такие слова сразу получают приоритет' : ' · слова из отчётов идут в обычную очередь'}`;
+  const source = sourceLabel(w.source);
+  const sourceSub = `${fmtDay(w.createdAt)} · ${w.source === 'MANUAL' || w.source === 'IMPORT' || w.source === 'TEACHER' ? t('sourcePriority') : t('sourceQueue')}`;
 
   return (
     <Screen
@@ -68,7 +64,7 @@ export function WordScreen() {
               disabled={patch.isPending}
               onClick={() => patch.mutate({ status: 'LEARNING' })}
             >
-              Вернуть в повторение
+              {t('backToLearning')}
             </Button>
           </div>
         ) : (
@@ -80,7 +76,7 @@ export function WordScreen() {
               patch.mutate({ status: 'LEARNED' });
             }}
           >
-            Это я уже знаю — выучено
+            {t('markLearned')}
           </MainButton>
         )
       }
@@ -91,11 +87,11 @@ export function WordScreen() {
           {!editing ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 17, lineHeight: '24px', color: 'var(--ink-2)' }}>
-                {w.translation ?? 'перевод подбирается…'}
+                {w.translation ?? t('translationPending')}
               </span>
               <IconButton
                 icon="edit"
-                label="Изменить перевод"
+                label={t('editTranslation')}
                 size="sm"
                 quiet
                 onClick={() => {
@@ -107,7 +103,7 @@ export function WordScreen() {
           ) : (
             <div className="tr-field-row">
               <TextField
-                label="Перевод"
+                label={t('translation')}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 autoFocus
@@ -117,21 +113,21 @@ export function WordScreen() {
                 size="md"
                 disabled={patch.isPending}
                 onClick={() => {
-                  const t = draft.trim();
-                  if (t && t !== w.translation) patch.mutate({ translation: t });
+                  const next = draft.trim();
+                  if (next && next !== w.translation) patch.mutate({ translation: next });
                   setEditing(false);
                 }}
               >
-                Готово
+                {t('done')}
               </Button>
             </div>
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
           <Badge tone={learned ? 'good' : 'brand'}>
-            {learned ? 'выучено' : (w.cefr ?? 'уровень?')}
+            {learned ? t('learned') : (w.cefr ?? t('levelUnknown'))}
           </Badge>
-          {prio ? <Badge tone="cards">приоритет</Badge> : null}
+          {prio ? <Badge tone="cards">{t('priority')}</Badge> : null}
         </div>
       </div>
 
@@ -139,11 +135,10 @@ export function WordScreen() {
       {priority.error ? <ErrorBox error={priority.error} /> : null}
 
       {!learned ? (
-        <Card title="Повторение" meta={prio ? 'приоритет включён' : 'обычная очередь'}>
+        <Card title={t('reviewTitle')} meta={prio ? t('priorityOn') : t('normalQueue')}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className="tr-muted" style={{ flexGrow: 1 }}>
-              Приоритетные слова идут в очереди карточек сразу после просроченных — не потеряются в
-              большом словаре. Интервалы 1 / 3 / 7 дней не меняются.
+              {t('priorityText')}
             </span>
             <Chip
               selected={prio}
@@ -151,13 +146,13 @@ export function WordScreen() {
               disabled={priority.isPending}
               onClick={() => priority.mutate(prio ? 'NORMAL' : 'HIGH')}
             >
-              {prio ? 'В приоритете' : 'Добавить в приоритет'}
+              {prio ? t('inPriority') : t('addPriority')}
             </Chip>
           </div>
         </Card>
       ) : null}
 
-      <ListGroup header="Источник">
+      <ListGroup header={t('source')}>
         <Cell
           tileIcon={
             w.source === 'MANUAL'
@@ -177,12 +172,15 @@ export function WordScreen() {
       </ListGroup>
 
       {w.example ? (
-        <Card title="Пример">
+        <Card title={t('example')}>
           <p style={{ margin: 0, fontSize: 16, lineHeight: '24px' }}>{w.example}</p>
         </Card>
       ) : null}
 
-      <Card title="Стадия карточек" meta={learned ? 'пройдено' : `${w.stage} из 3`}>
+      <Card
+        title={t('stagesTitle')}
+        meta={learned ? t('passed') : t('stageOf', { stage: w.stage })}
+      >
         <div style={{ display: 'flex', gap: 6 }}>
           {[1, 2, 3].map((s) => (
             <div
@@ -199,26 +197,22 @@ export function WordScreen() {
             color: 'var(--ink-2)',
           }}
         >
-          <span>Перевод</span>
-          <span>В предложении</span>
-          <span>Своё предложение</span>
+          <span>{t('stageTranslation')}</span>
+          <span>{t('stageSentence')}</span>
+          <span>{t('stageOwn')}</span>
         </div>
-        <span className="tr-muted">
-          {learned
-            ? 'Слово выучено: стадии пройдены, в карточки больше не попадает.'
-            : STAGE_NOTE[w.stage]}
-        </span>
+        <span className="tr-muted">{learned ? t('learnedNote') : t(STAGE_NOTE[w.stage])}</span>
         {!learned ? (
           <div>
             <Button variant="tonal" size="sm" icon="cards" to="/cards">
-              Потренировать это слово
+              {t('practice')}
             </Button>
           </div>
         ) : null}
       </Card>
 
       <span className="tr-muted" style={{ fontSize: 12, lineHeight: '16px', textAlign: 'center' }}>
-        Выученные слова не удаляются и не попадают в карточки. Стадия сохраняется.
+        {t('footer')}
       </span>
     </Screen>
   );

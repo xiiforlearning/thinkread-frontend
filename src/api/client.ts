@@ -1,3 +1,6 @@
+import { common } from '../i18n/common';
+import type { Lang } from '../i18n/lang';
+import { tr } from '../i18n/t';
 import {
   type AddWordsResult,
   ApiError,
@@ -37,6 +40,8 @@ export interface Api {
     register(firstName: string, lastName: string): Promise<Profile>;
     rename(firstName: string, lastName: string): Promise<Profile>;
     calmMode(on: boolean): Promise<Profile>;
+    /** Interface language of the student; the bot's reminders follow it. */
+    setLanguage(language: Lang): Promise<Profile>;
     progress(): Promise<Progress>;
     calendar(weeks: number): Promise<Week[]>;
     recommendations(): Promise<Recommendation[]>;
@@ -107,11 +112,7 @@ export class HttpApi implements Api {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch {
-      throw new ApiError(
-        'NETWORK',
-        'Нет связи с сервером. Проверь интернет и попробуй ещё раз.',
-        0,
-      );
+      throw new ApiError('NETWORK', tr(common, 'networkError'), 0);
     }
     const text = await res.text();
     let json: unknown = null;
@@ -129,7 +130,7 @@ export class HttpApi implements Api {
       if (res.status === 401) this.onUnauthorized?.();
       throw new ApiError(
         err?.code ?? String(res.status),
-        err?.message ?? `Ошибка ${res.status}`,
+        err?.message ?? tr(common, 'httpError', { status: res.status }),
         res.status,
         err?.details,
       );
@@ -148,6 +149,7 @@ export class HttpApi implements Api {
     register: (firstName, lastName) => this.call('POST', '/me/register', { firstName, lastName }),
     rename: (firstName, lastName) => this.call('PATCH', '/me', { firstName, lastName }),
     calmMode: (on) => this.call('POST', '/me/calm-mode', { on }),
+    setLanguage: (language) => this.call('PATCH', '/me/language', { language }),
     progress: () => this.call('GET', '/me/progress'),
     calendar: (weeks) => this.call('GET', '/me/calendar', undefined, { weeks }),
     recommendations: () => this.call('GET', '/me/recommendations'),

@@ -12,8 +12,11 @@ import {
 import { useInvalidateReports, useProfile, useProgress, useToday } from '../app/hooks';
 import { ErrorBox, Screen } from '../app/Shell';
 import { useApi } from '../app/session';
+import { common } from '../i18n/common';
+import { submitReportDict } from '../i18n/screens/submitReport';
+import { tr, useT } from '../i18n/t';
 import { words } from '../lib/dates';
-import { CLARIFY_FIELD_LABEL, METHOD_SHORT } from '../lib/labels';
+import { clarifyFieldLabel, methodShort } from '../lib/labels';
 import { haptic } from '../telegram/webapp';
 import {
   Badge,
@@ -59,17 +62,11 @@ type Step =
   | { kind: 'clarify'; type: ReportType; draftId: string; question: string; fields: string[] }
   | { kind: 'result'; type: ReportType; result: Extract<IntakeResult, { status: 'SAVED' }> };
 
-const HINT: Record<ReportType, string> = {
-  READING:
-    'Книга (если та же — можно не писать), сколько страниц, о чём было, новые слова. Формат свободный.',
-  LISTENING:
-    'Название подкаста, % понимания с первого раза, сколько раз слушал, пересказ в 2–3 предложениях, новые слова. Формат свободный.',
-};
-const PLACEHOLDER: Record<ReportType, string> = {
-  READING:
-    'прочитал 15 страниц Гарри Поттера, про то как он узнал, что волшебник, новые слова: wand, muggle, enchanted',
-  LISTENING:
-    'слушал 6 Minute English про сон, с первого раза примерно 70%, слушал 3 раза, слова: drowsy, nap',
+type Key = keyof typeof submitReportDict.ru;
+const HINT: Record<ReportType, Key> = { READING: 'hintReading', LISTENING: 'hintListening' };
+const PLACEHOLDER: Record<ReportType, Key> = {
+  READING: 'placeholderReading',
+  LISTENING: 'placeholderListening',
 };
 
 /** 07 · Сдать отчёт — type → free text → (one clarification) → parsed result the student can correct. */
@@ -80,6 +77,7 @@ export function SubmitReportScreen() {
   const today = useToday();
   const progress = useProgress();
   const invalidate = useInvalidateReports();
+  const t = useT(submitReportDict);
   const [step, setStep] = useState<Step>({ kind: 'type' });
   const [text, setText] = useState('');
   const [retell, setRetell] = useState('');
@@ -133,18 +131,18 @@ export function SubmitReportScreen() {
   const error = submit.error ?? clarify.error;
   const dailyLimit = error instanceof ApiError && error.errorCode === ERR.DAILY_LIMIT;
   const week = progress.data?.week;
-  const method = profile.data ? METHOD_SHORT[profile.data.listeningMethod] : '';
+  const method = profile.data ? methodShort(profile.data.listeningMethod) : '';
 
   const title =
     step.kind === 'type'
-      ? 'Сдать отчёт'
+      ? t('titleSubmit')
       : step.kind === 'text'
         ? step.type === 'READING'
-          ? 'Чтение'
-          : 'Аудирование'
+          ? t('reading')
+          : t('listening')
         : step.kind === 'clarify'
-          ? 'Один вопрос'
-          : 'Засчитано';
+          ? t('titleClarify')
+          : t('titleResult');
 
   const bottom =
     step.kind === 'text' ? (
@@ -152,7 +150,7 @@ export function SubmitReportScreen() {
         disabled={text.trim().length < 5 || busy}
         onClick={() => submit.mutate({ type: step.type, text: text.trim() })}
       >
-        {busy ? 'Разбираю…' : 'Отправить'}
+        {busy ? t('parsing') : tr(common, 'send')}
       </MainButton>
     ) : step.kind === 'clarify' ? (
       <MainButton
@@ -161,11 +159,11 @@ export function SubmitReportScreen() {
           clarify.mutate({ type: step.type, draftId: step.draftId, text: retell.trim() })
         }
       >
-        {busy ? 'Разбираю…' : 'Отправить ответ'}
+        {busy ? t('parsing') : t('sendAnswer')}
       </MainButton>
     ) : step.kind === 'result' ? (
       <MainButton icon="check" to="/reports" onClick={() => savePatch(step.result.report)}>
-        Всё верно
+        {t('allCorrect')}
       </MainButton>
     ) : null;
 
@@ -189,20 +187,13 @@ export function SubmitReportScreen() {
 
       {step.kind === 'type' ? (
         <>
-          <ListGroup
-            header="Что сдаём"
-            footer="Не больше одного отчёта каждого типа в день. Пиши свободно — разбор сделает AI, а ты поправишь, если что-то не так."
-          >
+          <ListGroup header={t('whatHeader')} footer={t('whatFooter')}>
             <Cell
               tileIcon="book"
               tileTone="brand"
-              title="Чтение"
-              subtitle={
-                today.data?.READING
-                  ? 'Сегодня уже сдано · следующий завтра'
-                  : 'Книга, страницы, о чём, слова'
-              }
-              badge={today.data?.READING ? 'сдано' : undefined}
+              title={t('reading')}
+              subtitle={today.data?.READING ? t('doneToday') : t('readingSub')}
+              badge={today.data?.READING ? t('doneBadge') : undefined}
               badgeTone="good"
               norms={
                 !today.data?.READING && week
@@ -217,13 +208,13 @@ export function SubmitReportScreen() {
             <Cell
               tileIcon="headphones"
               tileTone="listen"
-              title="Аудирование"
+              title={t('listening')}
               subtitle={
                 today.data?.LISTENING
-                  ? 'Сегодня уже сдано · следующий завтра'
-                  : `${method ? method.charAt(0).toUpperCase() + method.slice(1) : 'По методике уровня'}`
+                  ? t('doneToday')
+                  : `${method ? method.charAt(0).toUpperCase() + method.slice(1) : t('byLevelMethod')}`
               }
-              badge={today.data?.LISTENING ? 'сдано' : undefined}
+              badge={today.data?.LISTENING ? t('doneBadge') : undefined}
               badgeTone="good"
               norms={
                 !today.data?.LISTENING && week
@@ -238,27 +229,27 @@ export function SubmitReportScreen() {
               }
             />
           </ListGroup>
-          <ListGroup header="Что засчитывается">
+          <ListGroup header={t('countsHeader')}>
             <Cell
               tileIcon="check"
               tileTone="good"
               tileSize="sm"
-              title="Описание и страницы"
-              subtitle="Если чего-то нет, появится один вопрос"
+              title={t('countsDesc')}
+              subtitle={t('countsDescSub')}
             />
             <Cell
               tileIcon="plus"
               tileTone="cards"
               tileSize="sm"
-              title="Новые слова"
-              subtitle="Сразу попадают в словарь с переводом"
+              title={t('countsWords')}
+              subtitle={t('countsWordsSub')}
             />
             <Cell
               tileIcon="edit"
               tileTone="brand"
               tileSize="sm"
-              title="Разбор можно поправить"
-              subtitle="На следующем экране"
+              title={t('countsEdit')}
+              subtitle={t('countsEditSub')}
             />
           </ListGroup>
         </>
@@ -267,31 +258,31 @@ export function SubmitReportScreen() {
       {step.kind === 'text' ? (
         <>
           {busy ? (
-            <Callout tone="info" icon="spinner" title="Разбираю отчёт">
-              Обычно 1–3 секунды.
+            <Callout tone="info" icon="spinner" title={t('parsingTitle')}>
+              {t('parsingBody')}
             </Callout>
           ) : null}
           {dailyLimit ? (
-            <Callout tone="warn" title="Сегодня уже сдано">
-              Один отчёт каждого типа в день. Следующий можно сдать завтра.
+            <Callout tone="warn" title={t('limitTitle')}>
+              {t('limitBody')}
             </Callout>
           ) : error ? (
             <ErrorBox error={error} />
           ) : null}
           <Card>
             <TextArea
-              label={step.type === 'LISTENING' ? 'Что слушал и как прошло' : 'Что прочитал'}
+              label={step.type === 'LISTENING' ? t('labelListening') : t('labelReading')}
               rows={8}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={PLACEHOLDER[step.type]}
-              hint={HINT[step.type]}
+              placeholder={t(PLACEHOLDER[step.type])}
+              hint={t(HINT[step.type])}
               disabled={busy}
             />
             {step.type === 'LISTENING' ? (
               <div>
                 <Button variant="ghost" size="sm" icon="headphones" to="/reports/method">
-                  Напомнить методику и пример
+                  {t('remindMethod')}
                 </Button>
               </div>
             ) : null}
@@ -302,7 +293,7 @@ export function SubmitReportScreen() {
             disabled={busy}
             onClick={() => setStep({ kind: 'type' })}
           >
-            Назад к выбору
+            {t('backToChoice')}
           </Button>
         </>
       ) : null}
@@ -310,8 +301,8 @@ export function SubmitReportScreen() {
       {step.kind === 'clarify' ? (
         <>
           {busy ? (
-            <Callout tone="info" icon="spinner" title="Разбираю отчёт">
-              Обычно 1–3 секунды.
+            <Callout tone="info" icon="spinner" title={t('parsingTitle')}>
+              {t('parsingBody')}
             </Callout>
           ) : null}
           <Callout tone="brand" icon="chat">
@@ -320,14 +311,14 @@ export function SubmitReportScreen() {
           {error && !busy ? <ErrorBox error={error} /> : null}
           <Card>
             <TextArea
-              label={step.fields.map((f) => CLARIFY_FIELD_LABEL[f] ?? f).join(', ') || 'Ответ'}
+              label={step.fields.map((f) => clarifyFieldLabel(f)).join(', ') || t('answer')}
               rows={5}
               value={retell}
               onChange={(e) => setRetell(e.target.value)}
               placeholder={
                 step.fields.includes('retelling')
                   ? 'The episode was about… The hosts said that…'
-                  : 'Напиши ответ'
+                  : t('answerPlaceholder')
               }
               disabled={busy}
             />
@@ -351,25 +342,26 @@ function ResultView({
   edit: Draft;
   setEdit: (p: Draft) => void;
 }) {
+  const t = useT(submitReportDict);
   const r = result.report;
   const listening = r.type === 'LISTENING';
   const w = result.weekProgress;
   const added = result.words.added;
   const plus = added.length ? `, +${words(added.length)}` : '';
   const head = listening
-    ? `Аудирование ${w.listening.done}/${w.listening.norm} на этой неделе${plus}`
-    : `Чтение ${w.reading.done}/${w.reading.norm} на этой неделе${plus}`;
+    ? t('headListening', { done: w.listening.done, norm: w.listening.norm, plus })
+    : t('headReading', { done: w.reading.done, norm: w.reading.norm, plus });
   /** What the field shows: the student's draft once touched, else the parsed value. */
   const shown = (k: keyof ReportPatch, parsed: string | number | null): string =>
     edit[k] ?? (parsed === null ? '' : String(parsed));
   return (
     <>
       <Callout tone="good" icon="check" title={head}>
-        Разбор ниже — поправь, если что-то не так.
+        {t('resultBody')}
       </Callout>
-      <Card title="Что засчитано">
+      <Card title={t('resultCard')}>
         <TextField
-          label={listening ? 'Источник' : 'Книга'}
+          label={listening ? t('source') : t('book')}
           value={shown('sourceTitle', r.sourceTitle)}
           onChange={(e) => setEdit({ ...edit, sourceTitle: e.target.value })}
         />
@@ -377,7 +369,7 @@ function ResultView({
           {listening ? (
             <>
               <TextField
-                label="Понимание, %"
+                label={t('pct')}
                 type="number"
                 inputMode="numeric"
                 value={shown('firstPassPct', r.firstPassPct)}
@@ -385,7 +377,7 @@ function ResultView({
                 style={{ flex: '1 1 0' }}
               />
               <TextField
-                label="Прослушиваний"
+                label={t('listens')}
                 type="number"
                 inputMode="numeric"
                 value={shown('listenCount', r.listenCount)}
@@ -396,7 +388,7 @@ function ResultView({
           ) : (
             <>
               <TextField
-                label="Страниц"
+                label={t('pages')}
                 type="number"
                 inputMode="numeric"
                 value={shown('pages', r.pages)}
@@ -404,7 +396,7 @@ function ResultView({
                 style={{ flex: '1 1 0' }}
               />
               <TextField
-                label="О чём"
+                label={t('about')}
                 value={shown('summary', r.summary)}
                 onChange={(e) => setEdit({ ...edit, summary: e.target.value })}
                 style={{ flex: '2 1 0' }}
@@ -414,10 +406,10 @@ function ResultView({
         </div>
         <span className="tr-field-label">
           {added.length
-            ? 'Новые слова · попали в словарь'
+            ? t('wordsAdded')
             : result.words.alreadyHad.length
-              ? 'Слова из отчёта уже были в словаре'
-              : 'Новых слов в отчёте не было'}
+              ? t('wordsHad')
+              : t('wordsNone')}
         </span>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {added.map((x) => (
@@ -433,7 +425,7 @@ function ResultView({
         </div>
       </Card>
       <Button variant="secondary" size="md" block icon="book" to="/words">
-        Посмотреть новые слова
+        {t('seeWords')}
       </Button>
     </>
   );

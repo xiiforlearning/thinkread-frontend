@@ -1,11 +1,14 @@
 import { useProfile } from '../app/hooks';
 import { Loading, Screen } from '../app/Shell';
-import { levelLabel, METHOD_EXAMPLE, METHOD_LABEL, METHOD_STEPS } from '../lib/labels';
+import { methodDict } from '../i18n/screens/method';
+import { useT } from '../i18n/t';
+import { levelLabel, methodExample, methodLabel, methodSteps } from '../lib/labels';
 import { Button, Card, Cell, ListGroup, SegmentedControl } from '../ui/components';
 
 /** 08 · Как слушать — the listening method for the student's level, 6 steps + sample report. */
 export function MethodScreen() {
   const profile = useProfile();
+  const t = useT(methodDict);
   const p = profile.data;
   const method = p?.listeningMethod ?? 'PODCAST_NO_TRANSCRIPT';
   return (
@@ -13,30 +16,27 @@ export function MethodScreen() {
       tab="reports"
       head={
         <>
-          <h1 className="tr-h1">Отчёты</h1>
+          <h1 className="tr-h1">{t('title')}</h1>
           <SegmentedControl
             value="method"
             options={[
-              { value: 'history', label: 'История', to: '/reports' },
-              { value: 'method', label: 'Как слушать', to: '/reports/method' },
+              { value: 'history', label: t('history'), to: '/reports' },
+              { value: 'method', label: t('howToListen'), to: '/reports/method' },
             ]}
-            label="Раздел"
+            label={t('section')}
           />
         </>
       }
     >
       {!p ? <Loading /> : null}
-      <Card title={METHOD_LABEL[method]} meta={levelLabel(p?.level ?? null)}>
+      <Card title={methodLabel(method)} meta={levelLabel(p?.level ?? null)}>
         <span className="tr-muted">
-          Уровень берётся из твоей группы.{' '}
-          {p?.retellingRequired
-            ? 'Пересказ в отчёте обязателен — это главная часть работы.'
-            : 'Главное в отчёте — честный процент понимания с первого раза.'}
+          {t('levelFromGroup')} {p?.retellingRequired ? t('retellRequired') : t('honestPct')}
         </span>
       </Card>
 
-      <ListGroup header="Шесть шагов">
-        {METHOD_STEPS[method].map((s, i) => (
+      <ListGroup header={t('sixSteps')}>
+        {methodSteps(method).map((s, i) => (
           <Cell
             key={i}
             tile={String(i + 1)}
@@ -47,12 +47,12 @@ export function MethodScreen() {
         ))}
       </ListGroup>
 
-      <Card title="Пример отчёта" meta="формат свободный">
-        <pre className="tr-pre">{METHOD_EXAMPLE[method]}</pre>
+      <Card title={t('example')} meta={t('freeFormat')}>
+        <pre className="tr-pre">{methodExample(method)}</pre>
       </Card>
 
       <Button variant="primary" size="lg" block icon="edit" to="/reports/new?type=LISTENING">
-        Сдать отчёт об аудировании
+        {t('submitListening')}
       </Button>
     </Screen>
   );

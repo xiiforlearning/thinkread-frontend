@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Report, Word } from '../../api/types';
+import { studentsDict } from '../../i18n/admin/students';
+import { plural, useT } from '../../i18n/t';
 import { fmtRelative } from '../../lib/dates';
 import {
   Avatar,
@@ -25,7 +27,7 @@ import {
 } from '../../ui/components';
 import type { ChatReply, FlagView, Health, StudentCard, StudentRow } from '../api';
 import {
-  FLAG_STATUS_LABEL,
+  flagStatusLabel,
   fmtDay,
   fmtWeek,
   groupsOf,
@@ -42,6 +44,7 @@ type HealthFilter = 'all' | Health;
 
 /** 12 · Студенты: list pane (search, health chips, group) + the selected student's card. */
 export function StudentsScreen() {
+  const t = useT(studentsDict);
   const api = useAdminApi();
   const navigate = useNavigate();
   const { id } = useParams();
@@ -71,17 +74,17 @@ export function StudentsScreen() {
   }, [id, firstId, navigate]);
 
   const chips: Array<[HealthFilter, string]> = [
-    ['all', 'Все'],
-    ['bad', 'Проблема'],
-    ['warn', 'Отстаёт'],
-    ['good', 'Активен'],
+    ['all', t('chipAll')],
+    ['bad', t('chipBad')],
+    ['warn', t('chipWarn')],
+    ['good', t('chipGood')],
   ];
   const pane = (
     <section className="ad-pane">
       <div className="ad-pane-head">
-        <h1 className="ad-h2">Студенты</h1>
+        <h1 className="ad-h2">{t('title')}</h1>
         <SearchField
-          placeholder="Поиск по имени"
+          placeholder={t('searchByName')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -94,7 +97,7 @@ export function StudentsScreen() {
         </div>
         <Select
           size="sm"
-          label="Группа"
+          label={t('group')}
           value={group}
           onChange={(e) => {
             const next = new URLSearchParams(params);
@@ -103,19 +106,19 @@ export function StudentsScreen() {
             setParams(next, { replace: true });
           }}
           options={[
-            { value: '', label: 'Группа: все' },
+            { value: '', label: t('groupAll') },
             ...(groups.data ?? []).map((g) => ({ value: String(g.chatId), label: g.title })),
           ]}
         />
         <span className="tr-eyebrow">
-          Проблемные наверху · {rows.length}
+          {t('worstFirst', { n: rows.length })}
           {list.data ? '' : '…'}
         </span>
       </div>
       <div className="ad-pane-list">
         {list.isLoading ? <Loading /> : null}
         {list.error ? <ErrorBox error={list.error} retry={() => list.refetch()} /> : null}
-        {list.data && rows.length === 0 ? <Empty>Никого не нашлось.</Empty> : null}
+        {list.data && rows.length === 0 ? <Empty>{t('nobodyFound')}</Empty> : null}
         {rows.map((s) => (
           <StudentCell key={s.id} s={s} current={s.id === id} />
         ))}
@@ -124,9 +127,7 @@ export function StudentsScreen() {
   );
 
   return (
-    <Shell pane={pane}>
-      {id ? <StudentDetail id={id} /> : <Empty>Выберите студента слева.</Empty>}
-    </Shell>
+    <Shell pane={pane}>{id ? <StudentDetail id={id} /> : <Empty>{t('pickStudent')}</Empty>}</Shell>
   );
 }
 
@@ -151,6 +152,7 @@ function wash(done: number, norm: number): 'good' | 'warn' | 'bad' {
 }
 
 function StudentDetail({ id }: { id: string }) {
+  const t = useT(studentsDict);
   const api = useAdminApi();
   const owner = useIsOwner();
   const qc = useQueryClient();
@@ -195,8 +197,11 @@ function StudentDetail({ id }: { id: string }) {
       apply(res);
       setNotice(
         res.action === 'NONE' || res.action === 'KEEP'
-          ? 'Членство подтверждено, ничего не изменилось.'
-          : `Результат сверки: ${res.action}${res.levelChanged ? ', уровень обновлён' : ''}.`,
+          ? t('membershipConfirmed')
+          : t('recheckResult', {
+              action: res.action,
+              level: res.levelChanged ? t('levelUpdated') : '',
+            }),
       );
     },
   });
@@ -227,6 +232,7 @@ function StudentDetail({ id }: { id: string }) {
   const { student: s, calendar, words, flags, canEdit } = card.data;
   const archived = s.status === 'ARCHIVED';
   const thisWeek = calendar[0];
+  const newFlags = flags.filter((f) => f.status === 'NEW').length;
   const activityDays = new Set((reports.data?.data ?? []).map((r) => r.createdAt.slice(0, 10)));
   const mutationError = [rename, archive, recheck, review, parentReport].find(
     (m) => m.error,
@@ -249,17 +255,17 @@ function StudentDetail({ id }: { id: string }) {
                 style={{ display: 'flex', gap: 8, maxWidth: 420, alignItems: 'flex-end' }}
               >
                 <TextField
-                  label="Отображаемое имя (пусто — настоящее)"
+                  label={t('displayName')}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   style={{ flexGrow: 1 }}
                   autoFocus
                 />
                 <Button variant="primary" size="md" type="submit" disabled={rename.isPending}>
-                  Сохранить
+                  {t('save')}
                 </Button>
                 <Button variant="ghost" size="md" onClick={() => setRenaming(false)}>
-                  Отмена
+                  {t('cancel')}
                 </Button>
               </form>
             ) : (
@@ -270,7 +276,7 @@ function StudentDetail({ id }: { id: string }) {
                 {canEdit ? (
                   <IconButton
                     icon="edit"
-                    label="Переименовать"
+                    label={t('rename')}
                     size="sm"
                     quiet
                     onClick={() => {
@@ -293,13 +299,15 @@ function StudentDetail({ id }: { id: string }) {
             >
               <HealthDot status={s.health} />
               <Badge tone={archived ? 'neutral' : s.dmBlocked ? 'bad' : 'good'}>
-                {archived ? 'В архиве' : s.dmBlocked ? 'Бот заблокирован' : 'Доступ активен'}
+                {archived ? t('archived') : s.dmBlocked ? t('botBlocked') : t('accessActive')}
               </Badge>
               <span>
                 {groupsOf(s)} · {levelOf(s.level)}
               </span>
               {s.username ? <span>@{s.username}</span> : null}
-              <span>Активность: {s.lastActivityAt ? fmtRelative(s.lastActivityAt) : '—'}</span>
+              <span>
+                {t('activity', { when: s.lastActivityAt ? fmtRelative(s.lastActivityAt) : '—' })}
+              </span>
             </div>
           </div>
         </div>
@@ -311,7 +319,7 @@ function StudentDetail({ id }: { id: string }) {
             disabled={!api.features.parentReport || parentReport.isPending}
             onClick={() => (parent ? setParent(null) : parentReport.mutate())}
           >
-            {parentReport.isPending ? 'Собираю факты…' : 'Отчёт родителям'}
+            {parentReport.isPending ? t('gatheringFacts') : t('parentReport')}
           </Button>
           {!api.features.parentReport ? <SoonBadge /> : null}
           {owner ? (
@@ -320,14 +328,11 @@ function StudentDetail({ id }: { id: string }) {
               size="sm"
               disabled={archive.isPending}
               onClick={() => {
-                if (
-                  archived ||
-                  window.confirm(`Архивировать ${s.name}? История сохранится, доступ закроется.`)
-                )
+                if (archived || window.confirm(t('archiveConfirm', { name: s.name })))
                   archive.mutate(archived);
               }}
             >
-              {archived ? 'Восстановить' : 'Архивировать'}
+              {archived ? t('restore') : t('archive')}
             </Button>
           ) : null}
           <Button
@@ -337,7 +342,7 @@ function StudentDetail({ id }: { id: string }) {
             disabled={recheck.isPending}
             onClick={() => recheck.mutate()}
           >
-            {recheck.isPending ? 'Сверяю…' : 'Проверить членство'}
+            {recheck.isPending ? t('rechecking') : t('recheck')}
           </Button>
         </div>
       </div>
@@ -346,27 +351,25 @@ function StudentDetail({ id }: { id: string }) {
       {mutationError ? <Callout tone="bad">{errorText(mutationError)}</Callout> : null}
 
       {parent ? (
-        <Card desktop title="Отчёт для родителей" meta="текущий месяц">
+        <Card desktop title={t('parentReportTitle')} meta={t('currentMonth')}>
           <p className="ad-box">{parent.text}</p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <CopyButton text={parent.text} />
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-              Текст на русском, собран AI из фактов за период. Проверьте и перешлите сами.
-            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('parentReportNote')}</span>
           </div>
         </Card>
       ) : null}
 
       <div className="ad-grid ad-grid-4" style={{ gap: 12 }}>
-        <StatTile label="Слов" value={words.total} />
-        <StatTile label="Выучено" value={words.learned} tone="good" />
+        <StatTile label={t('words')} value={words.total} />
+        <StatTile label={t('learned')} value={words.learned} tone="good" />
         <StatTile
-          label="Чтение, неделя"
+          label={t('readingWeek')}
           value={thisWeek ? `${thisWeek.reading.done}/${thisWeek.reading.norm}` : '—'}
           wash={thisWeek ? wash(thisWeek.reading.done, thisWeek.reading.norm) : undefined}
         />
         <StatTile
-          label="Аудирование, неделя"
+          label={t('listeningWeek')}
           value={thisWeek ? `${thisWeek.listening.done}/${thisWeek.listening.norm}` : '—'}
           wash={thisWeek ? wash(thisWeek.listening.done, thisWeek.listening.norm) : undefined}
         />
@@ -374,17 +377,18 @@ function StudentDetail({ id }: { id: string }) {
 
       <Card
         desktop
-        title="Тихие флаги"
+        title={t('quietFlags')}
         meta={
-          flags.filter((f) => f.status === 'NEW').length
-            ? `${flags.filter((f) => f.status === 'NEW').length} новых`
-            : 'нет новых'
+          newFlags
+            ? `${newFlags} ${plural(newFlags, {
+                ru: [t('newOne'), t('newFew'), t('newMany')],
+                en: [t('newOne'), t('newFew')],
+              })}`
+            : t('noNew')
         }
       >
         {flags.length === 0 ? (
-          <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-            Флагов нет — всё согласуется с историей.
-          </span>
+          <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('noFlags')}</span>
         ) : null}
         {flags.map((f) => (
           <FlagRow
@@ -398,7 +402,7 @@ function StudentDetail({ id }: { id: string }) {
 
       <TeacherChat id={id} name={s.name} />
 
-      <Card desktop title="Нормы по неделям" meta="чтение · аудирование · дни с отчётами">
+      <Card desktop title={t('normsByWeek')} meta={t('normsMeta')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {calendar.map((w) => (
             <div
@@ -411,8 +415,8 @@ function StudentDetail({ id }: { id: string }) {
               }}
             >
               <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{fmtWeek(w.weekStart)}</span>
-              <NormCell value={w.reading.done} max={w.reading.norm} title="чтение" />
-              <NormCell value={w.listening.done} max={w.listening.norm} title="аудирование" />
+              <NormCell value={w.reading.done} max={w.reading.norm} title={t('reading')} />
+              <NormCell value={w.listening.done} max={w.listening.norm} title={t('listening')} />
               <span
                 style={{
                   display: 'grid',
@@ -429,7 +433,7 @@ function StudentDetail({ id }: { id: string }) {
                     <DayCell
                       key={key}
                       level={has ? 2 : 0}
-                      title={`${fmtDay(d, { weekday: true })}: ${has ? 'отчёт' : 'нет отчётов'}`}
+                      title={`${fmtDay(d, { weekday: true })}: ${has ? t('dayReport') : t('dayNoReports')}`}
                     />
                   );
                 })}
@@ -439,11 +443,11 @@ function StudentDetail({ id }: { id: string }) {
         </div>
       </Card>
 
-      <ListGroup desktop header="Лента отчётов · исходный текст и разбор">
+      <ListGroup desktop header={t('feed')}>
         {reports.isLoading ? <Loading /> : null}
         {reports.data && reports.data.data.length === 0 ? (
           <div className="tr-cell tr-cell-static">
-            <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>Отчётов пока нет.</span>
+            <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('noReports')}</span>
           </div>
         ) : null}
         {(reports.data?.data ?? []).slice(0, 12).map((r) => (
@@ -451,7 +455,7 @@ function StudentDetail({ id }: { id: string }) {
         ))}
         <div className="tr-cell tr-cell-static">
           <Button variant="ghost" size="sm" icon="book" onClick={() => setShowWords((v) => !v)}>
-            {showWords ? 'Скрыть словарь' : `Показать словарь студента (${words.total})`}
+            {showWords ? t('hideWords') : t('showWords', { n: words.total })}
           </Button>
         </div>
       </ListGroup>
@@ -469,6 +473,7 @@ function FlagRow({
   busy: boolean;
   onReview: (s: 'REVIEWED' | 'DISMISSED') => void;
 }) {
+  const t = useT(studentsDict);
   const open = f.status === 'NEW';
   return (
     <div
@@ -486,13 +491,13 @@ function FlagRow({
         <span style={{ fontSize: 12, color: 'var(--ink-2)', flexGrow: 1 }}>
           {fmtDay(f.createdAt, { weekday: true })}
         </span>
-        <Badge tone={open ? 'bad' : 'neutral'}>{FLAG_STATUS_LABEL[f.status]}</Badge>
+        <Badge tone={open ? 'bad' : 'neutral'}>{flagStatusLabel(f.status)}</Badge>
       </div>
       <span style={{ fontSize: 13, lineHeight: '18px' }}>{f.reason ?? '—'}</span>
       {open ? (
         <div style={{ display: 'flex', gap: 6 }}>
           <Button variant="dark" size="sm" disabled={busy} onClick={() => onReview('REVIEWED')}>
-            Проверено
+            {t('reviewed')}
           </Button>
           <Button
             variant="secondary"
@@ -500,7 +505,7 @@ function FlagRow({
             disabled={busy}
             onClick={() => onReview('DISMISSED')}
           >
-            Ложная тревога
+            {t('falseAlarm')}
           </Button>
         </div>
       ) : null}
@@ -509,10 +514,11 @@ function FlagRow({
 }
 
 export function ReportCell({ r }: { r: Report & { rawText?: string } }) {
+  const t = useT(studentsDict);
   const text = reportText(r);
   return (
     <Cell
-      cover={r.type === 'READING' ? (r.sourceTitle ?? 'Книга') : undefined}
+      cover={r.type === 'READING' ? (r.sourceTitle ?? t('book')) : undefined}
       podcast={r.type === 'LISTENING'}
       title={
         <span style={{ fontWeight: 400 }}>
@@ -526,10 +532,11 @@ export function ReportCell({ r }: { r: Report & { rawText?: string } }) {
 }
 
 function WordsCard({ id }: { id: string }) {
+  const t = useT(studentsDict);
   const api = useAdminApi();
   const q = useQuery({ queryKey: ['student-words', id], queryFn: () => api.students.words(id) });
   return (
-    <Card desktop title="Словарь студента" meta="последние 100">
+    <Card desktop title={t('studentWords')} meta={t('last100')}>
       {q.isLoading ? <Loading /> : null}
       {q.error ? <ErrorBox error={q.error} /> : null}
       {q.data ? <WordsTable words={q.data} /> : null}
@@ -538,19 +545,20 @@ function WordsCard({ id }: { id: string }) {
 }
 
 function WordsTable({ words }: { words: Word[] }) {
+  const t = useT(studentsDict);
   if (words.length === 0)
-    return <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>Словарь пуст.</span>;
+    return <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('emptyWords')}</span>;
   return (
     <div className="ad-scroll">
       <div
         className="ad-table ad-table-head"
         style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 70px 80px 90px' }}
       >
-        <span>Слово</span>
-        <span>Перевод</span>
+        <span>{t('colWord')}</span>
+        <span>{t('colTranslation')}</span>
         <span>CEFR</span>
-        <span>Стадия</span>
-        <span>Статус</span>
+        <span>{t('colStage')}</span>
+        <span>{t('colStatus')}</span>
       </div>
       {words.map((w) => (
         <div
@@ -561,12 +569,12 @@ function WordsTable({ words }: { words: Word[] }) {
           <span style={{ fontWeight: 600 }}>{w.word}</span>
           <span style={{ color: 'var(--ink-2)' }}>{w.translation ?? '—'}</span>
           <span>{w.cefr ?? '—'}</span>
-          <span>{w.status === 'LEARNED' ? '—' : `${w.stage} из 3`}</span>
+          <span>{w.status === 'LEARNED' ? '—' : t('stageOf', { stage: w.stage })}</span>
           <span>
             {w.status === 'LEARNED' ? (
-              <Badge tone="good">выучено</Badge>
+              <Badge tone="good">{t('wordLearned')}</Badge>
             ) : (
-              <Badge tone="neutral">учится</Badge>
+              <Badge tone="neutral">{t('wordLearning')}</Badge>
             )}
           </span>
         </div>
@@ -575,7 +583,8 @@ function WordsTable({ words }: { words: Word[] }) {
   );
 }
 
-export function CopyButton({ text, label = 'Скопировать' }: { text: string; label?: string }) {
+export function CopyButton({ text, label }: { text: string; label?: string }) {
+  const t = useT(studentsDict);
   const [copied, setCopied] = useState(false);
   return (
     <Button
@@ -588,7 +597,7 @@ export function CopyButton({ text, label = 'Скопировать' }: { text: s
         setTimeout(() => setCopied(false), 2000);
       }}
     >
-      {copied ? 'Скопировано' : label}
+      {copied ? t('copied') : (label ?? t('copy'))}
     </Button>
   );
 }
@@ -601,6 +610,7 @@ interface Msg {
 
 /** "Спросить AI" — the teacher's per-student chat (AiPurpose.TEACHER_CHAT, stage 8). */
 function TeacherChat({ id, name }: { id: string; name: string }) {
+  const t = useT(studentsDict);
   const api = useAdminApi();
   const [chat, setChat] = useState<Msg[]>([]);
   const [draft, setDraft] = useState('');
@@ -624,18 +634,12 @@ function TeacherChat({ id, name }: { id: string; name: string }) {
     ask.mutate(question);
   };
   const first = useMemo(() => name.split(' ')[0], [name]);
-  const prompts = [
-    'Как дела за месяц?',
-    'Что даётся хуже?',
-    'Застрявшие слова',
-    'Черновик обратной связи',
-  ];
+  const prompts = [t('promptMonth'), t('promptWorse'), t('promptStuck'), t('promptDraft')];
   return (
-    <Card desktop title="Спросить AI" meta="по фактам студента · студент ничего не видит">
+    <Card desktop title={t('askAi')} meta={t('askAiMeta')}>
       {!api.features.teacherChat ? (
-        <Callout tone="info" title="Появится на следующем этапе">
-          Чат учителя с AI по данным студента (отчёты, словарь, карточки, флаги) подключается в
-          этапе 8. В демо-режиме его можно попробовать уже сейчас.
+        <Callout tone="info" title={t('soonTitle')}>
+          {t('soonText')}
         </Callout>
       ) : null}
       <div className="ad-chat">
@@ -643,10 +647,8 @@ function TeacherChat({ id, name }: { id: string; name: string }) {
           <ChatMessage
             key={i}
             from={m.from}
-            who={m.from === 'me' ? 'Вы' : `AI · по данным ${first}`}
-            actions={
-              m.copyable ? <CopyButton text={m.text} label="Скопировать черновик" /> : undefined
-            }
+            who={m.from === 'me' ? t('you') : t('aiByData', { name: first })}
+            actions={m.copyable ? <CopyButton text={m.text} label={t('copyDraft')} /> : undefined}
           >
             <span style={{ whiteSpace: 'pre-line' }}>{m.text}</span>
           </ChatMessage>
@@ -654,7 +656,7 @@ function TeacherChat({ id, name }: { id: string; name: string }) {
       </div>
       {ask.isPending ? (
         <Callout tone="info" icon="spinner">
-          Собираю факты за период…
+          {t('gatheringPeriod')}
         </Callout>
       ) : null}
       {ask.error ? <Callout tone="bad">{errorText(ask.error)}</Callout> : null}
@@ -662,14 +664,10 @@ function TeacherChat({ id, name }: { id: string; name: string }) {
         value={draft}
         onChange={setDraft}
         onSend={send}
-        placeholder="Например: что ему даётся хуже?"
-        sendLabel="Спросить"
+        placeholder={t('askPlaceholder')}
+        sendLabel={t('ask')}
         disabled={!api.features.teacherChat || ask.isPending}
-        hint={
-          chat.length === 0 && !ask.isPending
-            ? 'Ответы по отчётам, словарю, карточкам и флагам. Цифры считает система, AI только объясняет.'
-            : undefined
-        }
+        hint={chat.length === 0 && !ask.isPending ? t('askHint') : undefined}
       >
         {prompts.map((p) => (
           <Chip

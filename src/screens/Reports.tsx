@@ -2,18 +2,23 @@ import { useMemo } from 'react';
 import type { Report, Week } from '../api/types';
 import { useProgress, useReports } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
+import { reportsDict } from '../i18n/screens/reports';
+import { tr, useT } from '../i18n/t';
 import { fmtDay, fmtWeek, words } from '../lib/dates';
 import { Button, Cell, ListGroup, NormCell, SegmentedControl } from '../ui/components';
 
 function subtitle(r: Report): string {
   const w = r.wordsAdded ? ` · +${words(r.wordsAdded)}` : '';
-  if (r.type === 'READING') return `Чтение${r.pages ? ` · ${r.pages} стр.` : ''}${w}`;
+  if (r.type === 'READING')
+    return `${tr(reportsDict, 'reading')}${r.pages ? ` · ${tr(reportsDict, 'pages', { n: r.pages })}` : ''}${w}`;
   const pct =
     r.firstPassPct !== null
       ? `${r.firstPassPct}%${r.secondPassPct !== null ? ` → ${r.secondPassPct}%` : ''}`
       : '';
-  const cnt = r.listenCount ? ` · ${r.listenCount} раз` : '';
-  return `Аудирование${pct ? ` · ${pct}` : ''}${cnt}${w}`;
+  const cnt = r.listenCount
+    ? ` · ${tr(reportsDict, r.listenCount === 1 ? 'timesOne' : 'timesOther', { n: r.listenCount })}`
+    : '';
+  return `${tr(reportsDict, 'listening')}${pct ? ` · ${pct}` : ''}${cnt}${w}`;
 }
 
 function WeekGroup({
@@ -27,6 +32,7 @@ function WeekGroup({
   header: string;
   footer?: string;
 }) {
+  const t = useT(reportsDict);
   const r = week?.reading.done ?? reports.filter((x) => x.type === 'READING').length;
   const l = week?.listening.done ?? reports.filter((x) => x.type === 'LISTENING').length;
   return (
@@ -41,7 +47,7 @@ function WeekGroup({
             color: 'var(--ink-2)',
           }}
         >
-          Чтение <NormCell value={r} max={week?.reading.norm ?? 3} />
+          {t('reading')} <NormCell value={r} max={week?.reading.norm ?? 3} />
         </span>
         <span
           style={{
@@ -52,15 +58,15 @@ function WeekGroup({
             color: 'var(--ink-2)',
           }}
         >
-          Аудирование <NormCell value={l} max={week?.listening.norm ?? 3} />
+          {t('listening')} <NormCell value={l} max={week?.listening.norm ?? 3} />
         </span>
       </div>
       {reports.map((rep) =>
         rep.type === 'READING' ? (
           <Cell
             key={rep.id}
-            cover={rep.sourceTitle ?? 'Книга'}
-            title={rep.sourceTitle ?? 'Чтение'}
+            cover={rep.sourceTitle ?? t('book')}
+            title={rep.sourceTitle ?? t('reading')}
             subtitle={subtitle(rep)}
             date={fmtDay(rep.createdAt, { weekday: true })}
           />
@@ -68,7 +74,7 @@ function WeekGroup({
           <Cell
             key={rep.id}
             podcast
-            title={rep.sourceTitle ?? 'Аудирование'}
+            title={rep.sourceTitle ?? t('listening')}
             subtitle={subtitle(rep)}
             date={fmtDay(rep.createdAt, { weekday: true })}
           />
@@ -82,6 +88,7 @@ function WeekGroup({
 export function ReportsScreen() {
   const reports = useReports();
   const progress = useProgress();
+  const t = useT(reportsDict);
 
   const groups = useMemo(() => {
     const map = new Map<string, Report[]>();
@@ -98,9 +105,9 @@ export function ReportsScreen() {
   const hasThisWeek = groups.some(([k]) => k === thisWeekKey);
   const footer = thisWeek
     ? thisWeek.listening.done === 0
-      ? 'Аудирования пока нет. Один подкаст — и будет 1/3.'
+      ? t('noListeningYet')
       : thisWeek.reading.done === 0
-        ? 'Чтения пока нет. Десять страниц — и будет 1/3.'
+        ? t('noReadingYet')
         : undefined
     : undefined;
 
@@ -109,20 +116,20 @@ export function ReportsScreen() {
       tab="reports"
       head={
         <>
-          <h1 className="tr-h1">Отчёты</h1>
+          <h1 className="tr-h1">{t('title')}</h1>
           <SegmentedControl
             value="history"
             options={[
-              { value: 'history', label: 'История', to: '/reports' },
-              { value: 'method', label: 'Как слушать', to: '/reports/method' },
+              { value: 'history', label: t('history'), to: '/reports' },
+              { value: 'method', label: t('howToListen'), to: '/reports/method' },
             ]}
-            label="Раздел"
+            label={t('section')}
           />
         </>
       }
     >
       <Button variant="primary" size="lg" block icon="edit" to="/reports/new">
-        Сдать отчёт
+        {t('submit')}
       </Button>
 
       {reports.error ? <ErrorBox error={reports.error} retry={() => reports.refetch()} /> : null}
@@ -132,8 +139,8 @@ export function ReportsScreen() {
         <WeekGroup
           week={thisWeek}
           reports={[]}
-          header={`Эта неделя · ${fmtWeek(thisWeek.weekStart)}`}
-          footer={footer ?? 'Отчётов на этой неделе пока нет.'}
+          header={`${t('thisWeek')} · ${fmtWeek(thisWeek.weekStart)}`}
+          footer={footer ?? t('noReportsThisWeek')}
         />
       ) : null}
       {groups.map(([weekStart, list], i) => (
@@ -141,13 +148,13 @@ export function ReportsScreen() {
           key={weekStart}
           week={weekStart === thisWeekKey ? thisWeek : null}
           reports={list}
-          header={`${weekStart === thisWeekKey ? 'Эта неделя' : i === 0 || (i === 1 && hasThisWeek) ? 'Прошлая неделя' : 'Неделя'} · ${fmtWeek(weekStart)}`}
+          header={`${weekStart === thisWeekKey ? t('thisWeek') : i === 0 || (i === 1 && hasThisWeek) ? t('lastWeek') : t('week')} · ${fmtWeek(weekStart)}`}
           footer={weekStart === thisWeekKey ? footer : undefined}
         />
       ))}
       {reports.data && reports.data.data.length === 0 && !thisWeek ? (
         <span className="tr-muted" style={{ textAlign: 'center' }}>
-          Пока ни одного отчёта. Первый — выше.
+          {t('empty')}
         </span>
       ) : null}
     </Screen>

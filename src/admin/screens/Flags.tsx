@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { flagsDict } from '../../i18n/admin/flags';
+import { useT } from '../../i18n/t';
 import { Badge, Button, Callout, Card, Cell, Chip } from '../../ui/components';
 import type { FlagKind, FlagStatus, FlagView } from '../api';
 import {
-  FLAG_SHORT,
-  FLAG_STATUS_LABEL,
-  FLAG_TITLE,
+  flagShort,
+  flagStatusLabel,
+  flagTitle,
   fmtDay,
   groupsOf,
   HEALTH_TONE,
@@ -31,6 +33,7 @@ const KIND_CHIPS: KindFilter[] = [
 
 /** 13 · Флаги: inbox pane + the selected flag with its report and the previous ones. */
 export function FlagsScreen() {
+  const t = useT(flagsDict);
   const api = useAdminApi();
   const navigate = useNavigate();
   const { id } = useParams();
@@ -54,21 +57,21 @@ export function FlagsScreen() {
     <section className="ad-pane">
       <div className="ad-pane-head">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <h1 className="ad-h2">Флаги · входящие</h1>
-          <span className="ad-sub">Только пометки: отчёты засчитаны, студент ничего не видит</span>
+          <h1 className="ad-h2">{t('title')}</h1>
+          <span className="ad-sub">{t('subtitle')}</span>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <Chip selected={status === 'NEW'} onClick={() => setStatus('NEW')}>
-            Новые
+            {t('chipNew')}
           </Chip>
           <Chip selected={status === 'ALL'} onClick={() => setStatus('ALL')}>
-            Все
+            {t('chipAll')}
           </Chip>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {KIND_CHIPS.map((k) => (
             <Chip key={k} selected={kind === k} onClick={() => setKind(k)}>
-              {k === 'ALL' ? 'Все типы' : FLAG_SHORT[k]}
+              {k === 'ALL' ? t('allKinds') : flagShort(k)}
             </Chip>
           ))}
         </div>
@@ -76,7 +79,7 @@ export function FlagsScreen() {
       <div className="ad-pane-list">
         {list.isLoading ? <Loading /> : null}
         {list.error ? <ErrorBox error={list.error} retry={() => list.refetch()} /> : null}
-        {list.data && rows.length === 0 ? <Empty>Флагов нет — входящие пусты.</Empty> : null}
+        {list.data && rows.length === 0 ? <Empty>{t('empty')}</Empty> : null}
         {rows.map((f) => (
           <Cell
             key={f.id}
@@ -88,15 +91,15 @@ export function FlagsScreen() {
                 ? HEALTH_TONE[(f.student as { health: 'good' | 'warn' | 'bad' }).health]
                 : 'neutral'
             }
-            title={f.student?.name ?? 'Студент'}
+            title={f.student?.name ?? t('student')}
             subtitle={
               f.reason
                 ? f.reason.length > 70
                   ? `${f.reason.slice(0, 70)}…`
                   : f.reason
-                : FLAG_TITLE[f.kind]
+                : flagTitle(f.kind)
             }
-            badge={FLAG_SHORT[f.kind]}
+            badge={flagShort(f.kind)}
             badgeTone="code"
             className={f.status === 'NEW' ? undefined : 'ad-dim'}
           />
@@ -105,12 +108,11 @@ export function FlagsScreen() {
     </section>
   );
 
-  return (
-    <Shell pane={pane}>{id ? <FlagDetail id={id} /> : <Empty>Выберите флаг слева.</Empty>}</Shell>
-  );
+  return <Shell pane={pane}>{id ? <FlagDetail id={id} /> : <Empty>{t('pickFlag')}</Empty>}</Shell>;
 }
 
 function FlagDetail({ id }: { id: string }) {
+  const t = useT(flagsDict);
   const api = useAdminApi();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['flag', id], queryFn: () => api.flags.one(id) });
@@ -138,7 +140,7 @@ function FlagDetail({ id }: { id: string }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Badge tone="code">{f.kind}</Badge>
-          <h2 className="ad-h2">{FLAG_TITLE[f.kind]}</h2>
+          <h2 className="ad-h2">{flagTitle(f.kind)}</h2>
         </div>
         <div
           style={{
@@ -157,7 +159,7 @@ function FlagDetail({ id }: { id: string }) {
           ) : null}
           {f.student ? <span>{groupsOf(f.student)}</span> : null}
           <span>{when}</span>
-          <Badge tone={stateTone(f.status)}>{FLAG_STATUS_LABEL[f.status]}</Badge>
+          <Badge tone={stateTone(f.status)}>{flagStatusLabel(f.status)}</Badge>
         </div>
         {open ? (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -168,7 +170,7 @@ function FlagDetail({ id }: { id: string }) {
               disabled={review.isPending}
               onClick={() => review.mutate('REVIEWED')}
             >
-              Проверено
+              {t('reviewed')}
             </Button>
             <Button
               variant="secondary"
@@ -176,42 +178,40 @@ function FlagDetail({ id }: { id: string }) {
               disabled={review.isPending}
               onClick={() => review.mutate('DISMISSED')}
             >
-              Ложная тревога
+              {t('falseAlarm')}
             </Button>
           </div>
         ) : null}
         {review.error ? <Callout tone="bad">{errorText(review.error)}</Callout> : null}
       </div>
 
-      <Callout tone="bad" title="Почему флаг">
-        {f.reason ?? 'Причина не записана.'}
+      <Callout tone="bad" title={t('why')}>
+        {f.reason ?? t('noReason')}
       </Callout>
 
       <div className="ad-grid ad-grid-2">
         <Card
           desktop
-          title="Отчёт с флагом"
+          title={t('flaggedReport')}
           meta={f.report ? fmtDay(f.report.createdAt, { weekday: true }) : when}
         >
           {f.report ? (
             <>
               <p className="ad-box">{reportText(f.report)}</p>
               <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-                Разобрано: {reportMeta(f.report)}
-                {f.report.isForwarded ? ' · переслано' : ''}
+                {t('parsed', { meta: reportMeta(f.report) })}
+                {f.report.isForwarded ? t('forwarded') : ''}
               </span>
             </>
           ) : (
             <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-              Флаг не привязан к отчёту{f.student ? ` — см. карточку студента` : ''}.
+              {t('notLinked', { hint: f.student ? t('seeStudent') : '' })}
             </span>
           )}
         </Card>
-        <Card desktop title="Предыдущие отчёты" meta="для сравнения">
+        <Card desktop title={t('previousReports')} meta={t('forComparison')}>
           {f.previousReports.length === 0 ? (
-            <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-              Предыдущих отчётов этого типа нет.
-            </span>
+            <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('noPrevious')}</span>
           ) : null}
           {f.previousReports.map((p) => (
             <div
@@ -236,10 +236,7 @@ function FlagDetail({ id }: { id: string }) {
         </Card>
       </div>
 
-      <Callout tone="info">
-        Ваши отметки «проверено» и «ложная тревога» помогают настроить проверку. Финальный барьер —
-        не алгоритм: флаг даёт повод спросить студента лично.
-      </Callout>
+      <Callout tone="info">{t('footer')}</Callout>
     </>
   );
 }

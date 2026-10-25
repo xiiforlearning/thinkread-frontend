@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useState } from 'react';
+import { settingsDict } from '../../i18n/admin/settings';
+import { plural, tr, useT } from '../../i18n/t';
 import {
   Badge,
   Button,
@@ -14,18 +16,23 @@ import { money, monthLabel, num, tokensShort } from '../format';
 import { ErrorBox, errorText, Loading, PageHead, Shell } from '../Shell';
 import { useAdminApi } from '../session';
 
-const PURPOSE_LABEL: Record<string, string> = {
-  DIALOG: 'разбор отчётов и диалог',
-  ENRICH_WORDS: 'обогащение слов',
-  AUTHENTICITY: 'подлинность и точечные вопросы',
-  SENTENCE_CHECK: 'проверка предложений (карточки)',
-  PARENT_REPORT: 'отчёты родителям',
-  TEACHER_CHAT: 'чат учителя',
-  SCHOOL_CHAT: 'AI по школе',
+const PURPOSE_KEY: Record<string, keyof typeof settingsDict.ru> = {
+  DIALOG: 'purposeDialog',
+  ENRICH_WORDS: 'purposeEnrich',
+  AUTHENTICITY: 'purposeAuthenticity',
+  SENTENCE_CHECK: 'purposeSentenceCheck',
+  PARENT_REPORT: 'purposeParentReport',
+  TEACHER_CHAT: 'purposeTeacherChat',
+  SCHOOL_CHAT: 'purposeSchoolChat',
 };
+function purposeLabel(purpose: string): string {
+  const key = PURPOSE_KEY[purpose];
+  return key ? tr(settingsDict, key) : purpose;
+}
 
 /** 15 · Настройки (owner): norms, reminders, health thresholds, staff, AI spend. */
 export function SettingsScreen() {
+  const t = useT(settingsDict);
   const api = useAdminApi();
   const qc = useQueryClient();
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.settings.get() });
@@ -83,9 +90,9 @@ export function SettingsScreen() {
                   type="button"
                   className="ad-link"
                   onClick={() => reset.mutate(key)}
-                  title={`Вернуть ${String(s.default)}`}
+                  title={t('resetTo', { value: String(s.default) })}
                 >
-                  сбросить
+                  {t('reset')}
                 </button>
               </>
             ) : null}
@@ -108,8 +115,8 @@ export function SettingsScreen() {
     <Shell>
       <form onSubmit={submit} style={{ display: 'contents' }}>
         <PageHead
-          title="Настройки"
-          subtitle="Только OWNER · применяются сразу для всех групп"
+          title={t('title')}
+          subtitle={t('subtitle')}
           aside={
             <Button
               variant={saved ? 'good' : 'dark'}
@@ -118,7 +125,7 @@ export function SettingsScreen() {
               type="submit"
               disabled={!dirty || save.isPending}
             >
-              {save.isPending ? 'Сохраняю…' : saved ? 'Сохранено' : 'Сохранить изменения'}
+              {save.isPending ? t('saving') : saved ? t('saved') : t('saveChanges')}
             </Button>
           }
         />
@@ -130,7 +137,7 @@ export function SettingsScreen() {
         {reset.error ? <Callout tone="bad">{errorText(reset.error)}</Callout> : null}
 
         <div className="ad-grid ad-grid-2">
-          <Card desktop title="Нормы" meta="неделя пн–вс, Asia/Tashkent">
+          <Card desktop title={t('norms')} meta={t('normsMeta')}>
             <div
               className="ad-form"
               style={{
@@ -140,9 +147,9 @@ export function SettingsScreen() {
                 alignItems: 'end',
               }}
             >
-              {field('norms.readingPerWeek', 'Чтение, отчётов в неделю')}
-              {field('norms.listeningPerWeek', 'Аудирование, в неделю')}
-              {field('norms.cardsPerDay', 'Карточек в день')}
+              {field('norms.readingPerWeek', t('readingPerWeek'))}
+              {field('norms.listeningPerWeek', t('listeningPerWeek'))}
+              {field('norms.cardsPerDay', t('cardsPerDay'))}
             </div>
             <div
               className="ad-form"
@@ -153,15 +160,13 @@ export function SettingsScreen() {
                 alignItems: 'end',
               }}
             >
-              {field('cards.correctToAdvance', 'Верных ответов до новой стадии')}
-              {field('cards.stage3ToLearned', 'Успехов на стадии 3 до «выучено»')}
+              {field('cards.correctToAdvance', t('correctToAdvance'))}
+              {field('cards.stage3ToLearned', t('stage3ToLearned'))}
             </div>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-              Нормы чтения и аудирования считаются раздельно; один отчёт типа в день.
-            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('normsNote')}</span>
           </Card>
 
-          <Card desktop title="Напоминания и AI">
+          <Card desktop title={t('remindersAi')}>
             <div
               className="ad-form"
               style={{
@@ -171,28 +176,18 @@ export function SettingsScreen() {
                 alignItems: 'end',
               }}
             >
-              {field('reminders.cardsTime', 'Карточки, утром', { type: 'time' })}
-              {field('reminders.reportsTime', 'Отчёты, вечером', { type: 'time' })}
-              {field('reminders.tiredDays', '«Устал» действует, дней')}
-              {field('ai.spotCheckProbability', 'Точечные проверки, доля отчётов', {
-                step: '0.05',
-              })}
-              {field('ai.dailyTokenLimitPerStudent', 'Лимит AI на студента в день, токенов', {
-                step: '1000',
-              })}
+              {field('reminders.cardsTime', t('cardsTime'), { type: 'time' })}
+              {field('reminders.reportsTime', t('reportsTime'), { type: 'time' })}
+              {field('reminders.tiredDays', t('tiredDays'))}
+              {field('ai.spotCheckProbability', t('spotCheckProbability'), { step: '0.05' })}
+              {field('ai.dailyTokenLimitPerStudent', t('dailyTokenLimit'), { step: '1000' })}
             </div>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-              Напоминания не приходят, если норма уже выполнена, и не дублируются в один день.
-            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('remindersNote')}</span>
           </Card>
         </div>
 
         <div className="ad-grid ad-grid-2">
-          <Card
-            desktop
-            title="Пороги «здоровья»"
-            meta="одна функция для дашборда, Mini App и сводки"
-          >
+          <Card desktop title={t('healthThresholds')} meta={t('healthMeta')}>
             <div
               className="ad-form"
               style={{
@@ -203,7 +198,7 @@ export function SettingsScreen() {
               }}
             >
               <div className="tr-field">
-                <HealthDot status="good">Активен, до дн.</HealthDot>
+                <HealthDot status="good">{t('healthGood')}</HealthDot>
                 <span
                   className="tr-input"
                   style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-2)' }}
@@ -212,17 +207,15 @@ export function SettingsScreen() {
                 </span>
               </div>
               <div className="tr-field">
-                <HealthDot status="warn">Отстаёт, от дн.</HealthDot>
+                <HealthDot status="warn">{t('healthWarn')}</HealthDot>
                 {field('health.yellowInactiveDays', '')}
               </div>
               <div className="tr-field">
-                <HealthDot status="bad">Проблема, от дн.</HealthDot>
+                <HealthDot status="bad">{t('healthBad')}</HealthDot>
                 {field('health.redInactiveDays', '')}
               </div>
             </div>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-              Заблокировавший бота студент — всегда «проблема».
-            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('healthNote')}</span>
             <StaffCard />
           </Card>
           <UsageCard />
@@ -235,6 +228,7 @@ export function SettingsScreen() {
 
 /** Scheduled jobs on demand — for checking the texts and for the demo in Telegram. */
 function OpsCard() {
+  const t = useT(settingsDict);
   const api = useAdminApi();
   const [log, setLog] = useState<string[]>([]);
   const note = (line: string) => setLog((l) => [line, ...l].slice(0, 6));
@@ -242,7 +236,16 @@ function OpsCard() {
     mutationFn: (kind: 'CARDS' | 'REPORTS') => api.ops.runReminders(kind),
     onSuccess: (r) =>
       note(
-        `${r.kind === 'CARDS' ? 'Карточки' : 'Отчёты'} · ${r.day}: отправлено ${r.sent} из ${r.candidates} (норма выполнена ${r.skipped.done}, уже напомнили ${r.skipped.reminded}, «устал» ${r.skipped.calm}, не доставлено ${r.skipped.failed})`,
+        t('remindersLog', {
+          kind: r.kind === 'CARDS' ? t('kindCards') : t('kindReports'),
+          day: r.day,
+          sent: r.sent,
+          candidates: r.candidates,
+          done: r.skipped.done,
+          reminded: r.skipped.reminded,
+          calm: r.skipped.calm,
+          failed: r.skipped.failed,
+        }),
       ),
     onError: (e) => note(errorText(e)),
   });
@@ -250,7 +253,14 @@ function OpsCard() {
     mutationFn: () => api.ops.runWeeklySummary(),
     onSuccess: (r) =>
       note(
-        `Сводка «${r.summary.weekLabel}» отправлена ${r.sentTo.length} получателям, новых флагов NORM_MISSED_WEEK: ${r.flagged}`,
+        t('summaryLog', {
+          week: r.summary.weekLabel,
+          recipients: `${r.sentTo.length} ${plural(r.sentTo.length, {
+            ru: [t('recipientOne'), t('recipientFew'), t('recipientMany')],
+            en: [t('recipientOne'), t('recipientFew')],
+          })}`,
+          flagged: r.flagged,
+        }),
       ),
     onError: (e) => note(errorText(e)),
   });
@@ -261,7 +271,7 @@ function OpsCard() {
   });
   const busy = reminders.isPending || summary.isPending || preview.isFetching;
   return (
-    <Card desktop title="Рассылки" meta="по расписанию они уходят сами; здесь — запустить сейчас">
+    <Card desktop title={t('mailings')} meta={t('mailingsMeta')}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Button
           variant="secondary"
@@ -270,7 +280,7 @@ function OpsCard() {
           disabled={busy}
           onClick={() => reminders.mutate('CARDS')}
         >
-          Напомнить о карточках
+          {t('remindCards')}
         </Button>
         <Button
           variant="secondary"
@@ -279,7 +289,7 @@ function OpsCard() {
           disabled={busy}
           onClick={() => reminders.mutate('REPORTS')}
         >
-          Напомнить об отчётах
+          {t('remindReports')}
         </Button>
         <Button
           variant="secondary"
@@ -288,7 +298,7 @@ function OpsCard() {
           disabled={busy}
           onClick={() => preview.refetch()}
         >
-          Показать сводку недели
+          {t('showSummary')}
         </Button>
         <Button
           variant="dark"
@@ -297,7 +307,7 @@ function OpsCard() {
           disabled={busy}
           onClick={() => summary.mutate()}
         >
-          Отправить сводку недели
+          {t('sendSummary')}
         </Button>
       </div>
       {preview.data ? <p className="ad-box">{preview.data.text}</p> : null}
@@ -316,16 +326,13 @@ function OpsCard() {
           ))}
         </div>
       ) : null}
-      <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-        Напоминания уходят только тем, у кого норма не выполнена, не чаще раза в день и не в режиме
-        «устал». Сводка идёт владельцу и учителям по их группам и ставит тихий флаг за неделю без
-        отчётов.
-      </span>
+      <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('mailingsNote')}</span>
     </Card>
   );
 }
 
 function StaffCard() {
+  const t = useT(settingsDict);
   const api = useAdminApi();
   const qc = useQueryClient();
   const staff = useQuery({ queryKey: ['staff'], queryFn: () => api.staff.list() });
@@ -347,7 +354,7 @@ function StaffCard() {
     onSuccess: (list) => qc.setQueryData(['staff'], list),
   });
   return (
-    <ListGroup desktop header="Учителя">
+    <ListGroup desktop header={t('teachers')}>
       {staff.isLoading ? <Loading /> : null}
       {(staff.data ?? []).map((s) => (
         <Cell
@@ -357,7 +364,7 @@ function StaffCard() {
           title={s.name ?? `Telegram id ${s.telegramUserId}`}
           subtitle={
             s.groups.map((g) => g.title).join(', ') ||
-            (s.role === 'OWNER' ? 'все группы' : 'группы не найдены')
+            (s.role === 'OWNER' ? t('allGroups') : t('noGroupsFound'))
           }
           badge={s.role}
           badgeTone={s.role === 'OWNER' ? 'count' : 'brand'}
@@ -369,7 +376,7 @@ function StaffCard() {
                 disabled={revoke.isPending}
                 onClick={() => revoke.mutate(s.telegramUserId)}
               >
-                Снять
+                {t('revoke')}
               </Button>
             ) : undefined
           }
@@ -386,17 +393,17 @@ function StaffCard() {
           }}
         >
           <TextField
-            label="Telegram id"
+            label={t('telegramId')}
             value={tgId}
             onChange={(e) => setTgId(e.target.value)}
             inputMode="numeric"
             placeholder="123456789"
           />
           <TextField
-            label="Имя"
+            label={t('name')}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Дилшод"
+            placeholder={t('namePlaceholder')}
           />
           <Button
             variant="primary"
@@ -404,23 +411,20 @@ function StaffCard() {
             disabled={!/^\d+$/.test(tgId) || grant.isPending}
             onClick={() => grant.mutate()}
           >
-            Назначить
+            {t('assign')}
           </Button>
         </div>
       ) : (
         <div className="tr-cell tr-cell-static">
           <Button variant="ghost" size="sm" icon="plus" onClick={() => setAdding(true)}>
-            Назначить учителя
+            {t('assignTeacher')}
           </Button>
         </div>
       )}
       {grant.error ? <Callout tone="bad">{errorText(grant.error)}</Callout> : null}
       {(staff.data ?? []).length === 0 && staff.data ? (
         <div className="tr-cell tr-cell-static">
-          <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-            Учителя определяются по подписи «teacher» у админа группы; здесь можно назначить
-            вручную.
-          </span>
+          <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('teachersNote')}</span>
         </div>
       ) : null}
     </ListGroup>
@@ -428,15 +432,21 @@ function StaffCard() {
 }
 
 function UsageCard() {
+  const t = useT(settingsDict);
   const api = useAdminApi();
   const q = useQuery({ queryKey: ['ai-usage'], queryFn: () => api.aiUsage() });
   const u = q.data;
   const max = Math.max(1, ...(u?.topStudents.map((s) => s.tokens) ?? [1]));
+  const calls = (n: number) =>
+    `${num(n)} ${plural(n, {
+      ru: [t('callOne'), t('callFew'), t('callMany')],
+      en: [t('callOne'), t('callFew')],
+    })}`;
   return (
     <Card
       desktop
-      title={`Расход на AI · ${u ? monthLabel(u.month) : '…'}`}
-      meta={u ? `${num(u.calls)} вызовов` : undefined}
+      title={t('aiSpend', { month: u ? monthLabel(u.month) : '…' })}
+      meta={u ? calls(u.calls) : undefined}
     >
       {q.isLoading ? <Loading /> : null}
       {q.error ? <ErrorBox error={q.error} /> : null}
@@ -454,27 +464,28 @@ function UsageCard() {
               {money(u.costUsd)}
             </span>
             <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-              ≈ {tokensShort(u.tokens)} токенов · {money(u.perActiveStudentUsd)} на студента
+              {t('tokensPerStudent', {
+                tokens: tokensShort(u.tokens),
+                money: money(u.perActiveStudentUsd),
+              })}
             </span>
           </div>
-          <span className="tr-eyebrow">По назначению</span>
+          <span className="tr-eyebrow">{t('byPurpose')}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {u.byPurpose.map((p) => (
               <Badge
                 key={p.purpose}
                 tone="neutral"
-                title={`${num(p.calls)} вызовов · ${tokensShort(p.tokens)} токенов`}
+                title={t('callsTokens', { calls: calls(p.calls), tokens: tokensShort(p.tokens) })}
               >
-                {PURPOSE_LABEL[p.purpose] ?? p.purpose}: {money(p.costUsd)}
+                {purposeLabel(p.purpose)}: {money(p.costUsd)}
               </Badge>
             ))}
             {u.byPurpose.length === 0 ? (
-              <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-                В этом месяце вызовов не было.
-              </span>
+              <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('noCalls')}</span>
             ) : null}
           </div>
-          <span className="tr-eyebrow">Топ студентов по токенам</span>
+          <span className="tr-eyebrow">{t('topByTokens')}</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {u.topStudents.map((s) => (
               <div
@@ -494,7 +505,7 @@ function UsageCard() {
                 </span>
                 <span className="ad-bar">
                   <span
-                    title={`${s.name ?? ''}: ${tokensShort(s.tokens)} токенов`}
+                    title={t('nameTokens', { name: s.name ?? '', tokens: tokensShort(s.tokens) })}
                     style={{ width: `${Math.round((s.tokens / max) * 100)}%` }}
                   />
                 </span>

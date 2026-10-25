@@ -1,6 +1,10 @@
+import { common } from './i18n/common';
+import { useLang } from './i18n/lang';
+import { tr } from './i18n/t';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ErrorBox, Loading, Screen } from './app/Shell';
+import { LanguageSync } from './app/LanguageSync';
 import { SessionProvider, useSession } from './app/session';
 import { AddWordsScreen } from './screens/AddWords';
 import { CardsScreen } from './screens/Cards';
@@ -23,13 +27,14 @@ const queryClient = new QueryClient({
 
 /** Routes a signed-in state to the right entry screen; ACTIVE students get the app. */
 function Gate() {
+  useLang();
   const { state, refresh } = useSession();
   const location = useLocation();
   if (state.kind === 'outside') return <OutsideTelegramScreen />;
   if (state.kind === 'loading')
     return (
       <Screen>
-        <Loading text="Проверяю доступ…" />
+        <Loading text={tr(common, 'checkingAccess')} />
       </Screen>
     );
   if (state.kind === 'error')
@@ -41,29 +46,37 @@ function Gate() {
       </Screen>
     );
   if (state.status === 'PENDING_NAME')
-    return location.pathname === '/onboarding' ? (
-      <OnboardingScreen />
-    ) : (
-      <Navigate to="/onboarding" replace />
+    return (
+      <>
+        <LanguageSync />
+        {location.pathname === '/onboarding' ? (
+          <OnboardingScreen />
+        ) : (
+          <Navigate to="/onboarding" replace />
+        )}
+      </>
     );
   if (state.status === 'STAFF') return <StaffScreen />;
   if (state.status !== 'ACTIVE')
     return <NotRegisteredScreen archived={state.status === 'ARCHIVED'} />;
   return (
-    <Routes>
-      <Route path="/" element={<MainScreen />} />
-      <Route path="/onboarding" element={<Navigate to="/" replace />} />
-      <Route path="/cards" element={<CardsScreen />} />
-      <Route path="/words" element={<DictionaryScreen />} />
-      <Route path="/words/add" element={<AddWordsScreen />} />
-      <Route path="/words/teacher" element={<TeacherWordsScreen />} />
-      <Route path="/words/:id" element={<WordScreen />} />
-      <Route path="/reports" element={<ReportsScreen />} />
-      <Route path="/reports/new" element={<SubmitReportScreen />} />
-      <Route path="/reports/method" element={<MethodScreen />} />
-      <Route path="/profile" element={<ProfileScreen />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <LanguageSync />
+      <Routes>
+        <Route path="/" element={<MainScreen />} />
+        <Route path="/onboarding" element={<Navigate to="/" replace />} />
+        <Route path="/cards" element={<CardsScreen />} />
+        <Route path="/words" element={<DictionaryScreen />} />
+        <Route path="/words/add" element={<AddWordsScreen />} />
+        <Route path="/words/teacher" element={<TeacherWordsScreen />} />
+        <Route path="/words/:id" element={<WordScreen />} />
+        <Route path="/reports" element={<ReportsScreen />} />
+        <Route path="/reports/new" element={<SubmitReportScreen />} />
+        <Route path="/reports/method" element={<MethodScreen />} />
+        <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

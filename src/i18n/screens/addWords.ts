@@ -1,0 +1,56 @@
+import { defineDict } from '../t';
+
+export const addWordsDict = defineDict({
+  ru: {
+    titleInput: 'Добавить слова',
+    titlePreview: 'Проверь список',
+    titleDone: 'Готово',
+    parsing: 'Разбираю…',
+    parse: 'Разобрать список',
+    adding: 'Добавляю…',
+    addN: 'Добавить {n}',
+    openDictionary: 'Открыть словарь',
+    listLabel: 'Список слов',
+    listPlaceholder: 'resilient — стойкий\nstubborn\nto look forward to, cheat, nap…',
+    listHint:
+      'Как угодно: через запятую, в столбик, с переводом или без. Перевод, пример и уровень подберёт AI, твой перевод — в приоритете.',
+    orFile: 'Или файл .txt / .csv',
+    found: 'Нашёл {words}',
+    duplicates: '{n} уже есть в словаре — их пропущу.',
+    uncheckExtra: 'Сними галочку с лишних.',
+    newWords: 'Новые слова',
+    translationByAi: 'перевод подберёт AI',
+    alreadyHave: 'уже есть',
+    cancel: 'Отмена',
+    addedTitle: 'Добавлено {words}',
+    addedText:
+      'Все со статусом «изучается», стадия 1, с приоритетом. Завтра они начнут появляться в карточках.',
+    reviewNow: 'Повторить сейчас',
+  },
+  en: {
+    titleInput: 'Add words',
+    titlePreview: 'Check the list',
+    titleDone: 'Done',
+    parsing: 'Parsing…',
+    parse: 'Parse the list',
+    adding: 'Adding…',
+    addN: 'Add {n}',
+    openDictionary: 'Open dictionary',
+    listLabel: 'Word list',
+    listPlaceholder: 'resilient — стойкий\nstubborn\nto look forward to, cheat, nap…',
+    listHint:
+      'Any way you like: comma-separated, one per line, with or without a translation. AI fills in the translation, example and level; your own translation wins.',
+    orFile: 'Or a .txt / .csv file',
+    found: 'Found {words}',
+    duplicates: '{n} already in the dictionary — skipping them.',
+    uncheckExtra: 'Untick the ones you don’t need.',
+    newWords: 'New words',
+    translationByAi: 'AI will add the translation',
+    alreadyHave: 'already have',
+    cancel: 'Cancel',
+    addedTitle: 'Added {words}',
+    addedText:
+      'All marked “learning”, stage 1, with priority. They start showing up in cards tomorrow.',
+    reviewNow: 'Review now',
+  },
+});

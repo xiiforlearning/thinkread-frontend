@@ -1,5 +1,8 @@
 import { type FormEvent, useState } from 'react';
+import { loginDict } from '../i18n/admin/login';
+import { useT } from '../i18n/t';
 import { Button, Callout, Card, TextField } from '../ui/components';
+import { fmtTime } from './format';
 import { errorText } from './Shell';
 import { useSession } from './session';
 
@@ -9,6 +12,7 @@ import { useSession } from './session';
  * (`pnpm dev:token owner`) and the demo on in-memory data.
  */
 export function LoginScreen() {
+  const t = useT(loginDict);
   const { apiUrl, requestCode, loginWithCode, loginWithToken, startDemo } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,25 +57,20 @@ export function LoginScreen() {
 
   return (
     <div className="tr tr-desktop ad-login">
-      <Card desktop title="ThinkRead · Дашборд" meta="для владельца и учителей">
+      <Card desktop title={t('title')} meta={t('meta')}>
         <span style={{ fontSize: 13, lineHeight: '18px', color: 'var(--ink-2)' }}>
-          Вход через Telegram: пускаем только владельца школы и учителей (админов групп с подписью
-          teacher). Студентам сюда не нужно — у них Mini App.
+          {t('intro')}
         </span>
         <form onSubmit={submitCode} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <TextField
-            label="Код из Telegram"
+            label={t('codeLabel')}
             placeholder="123 456"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={7}
-            hint={
-              sent
-                ? `Код отправлен владельцу в Telegram, действует до ${sent.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.`
-                : 'Владелец: нажмите «Прислать код», бот напишет вам в Telegram. Учитель: напишите боту любое сообщение — он ответит кодом.'
-            }
+            hint={sent ? t('codeSent', { time: fmtTime(sent) }) : t('codeHint')}
           />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button
@@ -81,10 +80,10 @@ export function LoginScreen() {
               icon="check"
               disabled={busy || code.replace(/\D/g, '').length !== 6}
             >
-              Войти
+              {t('signIn')}
             </Button>
             <Button variant="secondary" size="md" icon="send" onClick={askCode} disabled={busy}>
-              {sent ? 'Прислать ещё раз' : 'Прислать код в Telegram'}
+              {sent ? t('resendCode') : t('sendCode')}
             </Button>
           </div>
         </form>
@@ -92,7 +91,7 @@ export function LoginScreen() {
 
         <details>
           <summary style={{ fontSize: 13, cursor: 'pointer', color: 'var(--ink-2)' }}>
-            Войти по токену разработчика
+            {t('devToken')}
           </summary>
           <form
             onSubmit={submitToken}
@@ -107,34 +106,32 @@ export function LoginScreen() {
               spellCheck={false}
             />
             <TextField
-              label="Как вас показывать"
-              placeholder="Рустам"
+              label={t('nameLabel')}
+              placeholder={t('namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            <span className="ad-sub">API: {apiUrl || 'тот же адрес, что и страница'}</span>
+            <span className="ad-sub">API: {apiUrl || t('apiSameOrigin')}</span>
             <Button variant="dark" size="md" type="submit" disabled={!token.trim()}>
-              Войти
+              {t('signIn')}
             </Button>
           </form>
         </details>
 
         <span className="ad-sub" style={{ opacity: 0.6 }}>
-          сборка {__BUILD__}
+          {t('build', { build: __BUILD__ })}
         </span>
         {demoOffered ? (
           <>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <Button variant="tonal" size="md" icon="star" onClick={() => startDemo('OWNER')}>
-                Демо: владелец
+                {t('demoOwner')}
               </Button>
               <Button variant="ghost" size="md" onClick={() => startDemo('TEACHER')}>
-                Демо: учитель
+                {t('demoTeacher')}
               </Button>
             </div>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-              Демо работает на данных из макета, без сервера.
-            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('demoNote')}</span>
           </>
         ) : null}
       </Card>

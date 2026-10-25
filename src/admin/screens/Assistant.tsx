@@ -1,5 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { assistantDict } from '../../i18n/admin/assistant';
+import { useT } from '../../i18n/t';
 import { Callout, Card, ChatMessage, Chip, Composer } from '../../ui/components';
 import { errorText, PageHead, Shell } from '../Shell';
 import { useAdminApi, useIsOwner } from '../session';
@@ -9,17 +11,23 @@ interface Msg {
   text: string;
 }
 
-const PROMPTS_OWNER = [
-  'Кто отстаёт по чтению?',
-  'Кто отстаёт по аудированию?',
-  'Сравни группы',
-  'Итоги недели',
-  'У кого новые пометки?',
+type PromptKey = keyof typeof assistantDict.ru;
+const PROMPTS_OWNER: PromptKey[] = [
+  'promptBehindReading',
+  'promptBehindListening',
+  'promptCompareGroups',
+  'promptWeekSummary',
+  'promptNewFlags',
 ];
-const PROMPTS_TEACHER = ['Кто отстаёт в моих группах?', 'Итоги недели', 'У кого новые пометки?'];
+const PROMPTS_TEACHER: PromptKey[] = [
+  'promptBehindMyGroups',
+  'promptWeekSummary',
+  'promptNewFlags',
+];
 
 /** AI по всей школе (B1): вопрос по школе или по группам учителя, ответ по фактам, которые посчитала система. */
 export function AssistantScreen() {
+  const t = useT(assistantDict);
   const api = useAdminApi();
   const owner = useIsOwner();
   const [chat, setChat] = useState<Msg[]>([]);
@@ -39,23 +47,14 @@ export function AssistantScreen() {
     setDraft('');
     ask.mutate(q);
   };
-  const prompts = owner ? PROMPTS_OWNER : PROMPTS_TEACHER;
+  const prompts = (owner ? PROMPTS_OWNER : PROMPTS_TEACHER).map((k) => t(k));
   return (
     <Shell>
-      <PageHead
-        title="AI по школе"
-        subtitle={
-          owner
-            ? 'Вопросы по всем студентам и группам. Цифры считает система, AI только объясняет.'
-            : 'Вопросы по вашим группам. Цифры считает система, AI только объясняет.'
-        }
-      />
-      <Card desktop title="Спросить" meta="последние 4 недели · ничего не сохраняется">
+      <PageHead title={t('title')} subtitle={owner ? t('subtitleOwner') : t('subtitleTeacher')} />
+      <Card desktop title={t('ask')} meta={t('askMeta')}>
         {chat.length === 0 ? (
-          <Callout tone="info" title="Что умеет">
-            Кто отстаёт и по чему, сравнение групп, итоги недели, у кого появились пометки. AI видит
-            только посчитанные факты: нормы по неделям, здоровье, словарь, количество флагов. Тексты
-            отчётов ему не передаются.
+          <Callout tone="info" title={t('whatItDoes')}>
+            {t('whatItDoesText')}
           </Callout>
         ) : null}
         <div className="ad-chat">
@@ -63,9 +62,7 @@ export function AssistantScreen() {
             <ChatMessage
               key={i}
               from={m.from}
-              who={
-                m.from === 'me' ? 'Вы' : owner ? 'AI · по данным школы' : 'AI · по вашим группам'
-              }
+              who={m.from === 'me' ? t('you') : owner ? t('aiSchool') : t('aiGroups')}
             >
               <span style={{ whiteSpace: 'pre-line' }}>{m.text}</span>
             </ChatMessage>
@@ -73,7 +70,7 @@ export function AssistantScreen() {
         </div>
         {ask.isPending ? (
           <Callout tone="info" icon="spinner">
-            Собираю факты по {owner ? 'школе' : 'группам'}…
+            {owner ? t('gatheringSchool') : t('gatheringGroups')}
           </Callout>
         ) : null}
         {ask.error ? <Callout tone="bad">{errorText(ask.error)}</Callout> : null}
@@ -81,8 +78,8 @@ export function AssistantScreen() {
           value={draft}
           onChange={setDraft}
           onSend={send}
-          placeholder="Например: кто отстаёт по чтению на этой неделе?"
-          sendLabel="Спросить"
+          placeholder={t('placeholder')}
+          sendLabel={t('ask')}
           disabled={ask.isPending}
         >
           {prompts.map((p) => (

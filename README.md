@@ -77,13 +77,18 @@ src/
 ├── app/        session.tsx (sign-in, demo switch), hooks.ts (queries, BackButton), Shell.tsx (Screen frame)
 ├── screens/    Onboarding, NotRegistered, Main, Cards, Dictionary, Word, AddWords, TeacherWords,
 │               Reports, SubmitReport, Method, Profile
+├── i18n/       lang.ts (ru | en, localStorage, useLang), t.ts (defineDict, tr, useT, plural), common.ts,
+│               screens/<screen>.ts and admin/<screen>.ts — one dictionary per screen
 ├── telegram/   webapp.ts — typed wrapper over window.Telegram.WebApp (theme, BackButton, haptics)
-├── lib/        dates.ts (ru formatting, Asia/Tashkent), labels.ts (levels, methods, method steps)
+├── lib/        dates.ts (locale formatting, Asia/Tashkent), labels.ts (levels, methods, method steps)
 └── ui/         tokens.css, components.css, components.tsx, app.css, admin.css — the design system
 ```
 
-Rules: every colour / radius / size is a token from `tokens.css`; user-facing text is Russian; the
-API is the source of truth for data shapes (`src/api/types.ts` mirrors `me/serializers.ts` in the
+Rules: every colour / radius / size is a token from `tokens.css`; user-facing text lives in the
+`src/i18n` dictionaries in Russian and English (`const t = useT(dict)` in a component, `tr(dict, key)`
+in helpers, counts through `plural()`); the language comes from the profile (`PATCH /me/language`,
+the switch in the profile and in the dashboard sidebar) or, before it is chosen, from Telegram's
+`language_code`; the API is the source of truth for data shapes (`src/api/types.ts` mirrors `me/serializers.ts` in the
 backend). Cards go through `/me/cards` (one attempt at a time; the mock reproduces the same rules).
 
 ## Telegram setup

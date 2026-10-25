@@ -15,6 +15,9 @@ import {
   useId,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { common } from '../i18n/common';
+import { useLang } from '../i18n/lang';
+import { tr } from '../i18n/t';
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -340,7 +343,7 @@ export function BookCover({
     <span
       className={cx('tr', 'tr-cover', `tr-cover-${tone}`)}
       role="img"
-      aria-label={`Обложка: ${title}`}
+      aria-label={tr(common, 'cover', { title })}
     >
       <span className="tr-cover-rule" />
       <span>{title}</span>
@@ -349,14 +352,15 @@ export function BookCover({
 }
 
 export function PodcastTile({
-  label = 'Подкаст',
+  label,
   bars = [10, 20, 14, 24, 12],
 }: {
   label?: string;
   bars?: number[];
 }) {
+  const text = label ?? tr(common, 'podcast');
   return (
-    <span className="tr tr-podcast" role="img" aria-label={label}>
+    <span className="tr tr-podcast" role="img" aria-label={text}>
       {bars.map((b, i) => (
         <span key={i} style={{ height: b }} />
       ))}
@@ -424,13 +428,15 @@ export function Cell(p: CellProps) {
           : null}
         {p.badge ? <Badge tone={p.badgeTone ?? 'brand'}>{p.badge}</Badge> : null}
         {p.health ? <HealthDot status={p.health} dotOnly /> : null}
-        {p.flag ? <Icon name="flag" label="есть флаг" style={{ color: 'var(--bad)' }} /> : null}
+        {p.flag ? (
+          <Icon name="flag" label={tr(common, 'hasFlag')} style={{ color: 'var(--bad)' }} />
+        ) : null}
         {p.toggle !== undefined ? (
           <Switch
             checked={p.toggle}
             onChange={p.onToggle}
             disabled={p.disabled}
-            label={typeof p.title === 'string' ? p.title : 'Переключатель'}
+            label={typeof p.title === 'string' ? p.title : tr(common, 'toggle')}
             labelHidden
           />
         ) : null}
@@ -730,14 +736,14 @@ export function TextArea({
 }
 
 export function SearchField({
-  label = 'Поиск',
+  label,
   className,
   ...rest
 }: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
   return (
     <label className={cx('tr', 'tr-search', className)}>
       <Icon name="search" style={{ width: 18, height: 18 }} />
-      <span className="tr-visually-hidden">{label}</span>
+      <span className="tr-visually-hidden">{label ?? tr(common, 'search')}</span>
       <input type="search" {...rest} />
     </label>
   );
@@ -872,16 +878,17 @@ export function Switch({
 
 export type TabKey = 'home' | 'cards' | 'dict' | 'reports';
 
-const TABS: Array<{ key: TabKey; label: string; icon: IconName; to: string }> = [
-  { key: 'home', label: 'Главная', icon: 'home', to: '/' },
-  { key: 'cards', label: 'Карточки', icon: 'cards', to: '/cards' },
-  { key: 'dict', label: 'Словарь', icon: 'book', to: '/words' },
-  { key: 'reports', label: 'Отчёты', icon: 'list', to: '/reports' },
+const TABS: Array<{ key: TabKey; label: keyof typeof common.ru; icon: IconName; to: string }> = [
+  { key: 'home', label: 'tabHome', icon: 'home', to: '/' },
+  { key: 'cards', label: 'tabCards', icon: 'cards', to: '/cards' },
+  { key: 'dict', label: 'tabDict', icon: 'book', to: '/words' },
+  { key: 'reports', label: 'tabReports', icon: 'list', to: '/reports' },
 ];
 
 export function TabBar({ active }: { active: TabKey }) {
+  useLang();
   return (
-    <nav className="tr tr-tabbar" aria-label="Разделы">
+    <nav className="tr tr-tabbar" aria-label={tr(common, 'sections')}>
       {TABS.map((it) => (
         <Link
           key={it.key}
@@ -892,7 +899,7 @@ export function TabBar({ active }: { active: TabKey }) {
           <span className="tr-tab-icon">
             <Icon name={it.icon} size="lg" />
           </span>
-          {it.label}
+          {tr(common, it.label)}
         </Link>
       ))}
     </nav>
@@ -945,7 +952,7 @@ export function Callout({
  */
 export function TelegramHeader({
   title = 'ThinkRead',
-  subtitle = 'мини-приложение',
+  subtitle,
   back,
   onBack,
 }: {
@@ -954,16 +961,17 @@ export function TelegramHeader({
   back?: boolean;
   onBack?: () => void;
 }) {
+  useLang();
   return (
     <header className="tr tr-tgheader">
       {back ? (
-        <IconButton icon="chevron-left" quiet label="Назад" onClick={onBack} />
+        <IconButton icon="chevron-left" quiet label={tr(common, 'back')} onClick={onBack} />
       ) : (
         <span style={{ width: 40 }} />
       )}
       <div className="tr-tgheader-title">
         <b>{title}</b>
-        <span>{subtitle}</span>
+        <span>{subtitle ?? tr(common, 'appSubtitle')}</span>
       </div>
       <span style={{ width: 40 }} />
     </header>
@@ -1056,11 +1064,12 @@ export function CheckRow({
 /* ---------- Desktop: HealthDot, NavItem, ChatMessage, Composer ---------- */
 
 export type HealthStatus = 'good' | 'warn' | 'bad';
-const HEALTH_LABEL: Record<HealthStatus, string> = {
-  good: 'Активен',
-  warn: 'Отстаёт',
-  bad: 'Проблема',
-};
+export function healthLabel(status: HealthStatus): string {
+  return tr(
+    common,
+    status === 'good' ? 'healthGood' : status === 'warn' ? 'healthWarn' : 'healthBad',
+  );
+}
 
 export function HealthDot({
   status = 'good',
@@ -1075,9 +1084,9 @@ export function HealthDot({
     <span className={cx('tr', 'tr-health', `tr-health-${status}`)}>
       <span className="tr-health-dot" aria-hidden="true" />
       {dotOnly ? (
-        <span className="tr-visually-hidden">{HEALTH_LABEL[status]}</span>
+        <span className="tr-visually-hidden">{healthLabel(status)}</span>
       ) : (
-        (children ?? HEALTH_LABEL[status])
+        (children ?? healthLabel(status))
       )}
     </span>
   );
@@ -1164,7 +1173,7 @@ export function Composer({
   placeholder,
   disabled,
   hint,
-  sendLabel = 'Отправить',
+  sendLabel,
   icon = 'send',
   variant = 'dark',
   children,
@@ -1194,7 +1203,7 @@ export function Composer({
           className="tr-input"
           type="text"
           autoComplete="off"
-          aria-label={placeholder ?? 'Сообщение'}
+          aria-label={placeholder ?? tr(common, 'message')}
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -1207,7 +1216,7 @@ export function Composer({
           type="submit"
           disabled={disabled || !value.trim()}
         >
-          {sendLabel}
+          {sendLabel ?? tr(common, 'send')}
         </Button>
       </div>
       {hint ? <span className="tr-composer-hint">{hint}</span> : null}

@@ -4,7 +4,10 @@ import type { CardAnswer, CardView } from '../api/types';
 import { keys } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
 import { useApi } from '../app/session';
-import { STAGE_LABEL } from '../lib/labels';
+import { cardsDict } from '../i18n/screens/cards';
+import { useT } from '../i18n/t';
+import { words } from '../lib/dates';
+import { stageLabel } from '../lib/labels';
 import { haptic } from '../telegram/webapp';
 import {
   Badge,
@@ -41,6 +44,7 @@ export function CardsScreen() {
   const [answer, setAnswer] = useState('');
   const [extra, setExtra] = useState(false);
   const [extraDone, setExtraDone] = useState(0);
+  const t = useT(cardsDict);
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['cards'] });
@@ -125,7 +129,7 @@ export function CardsScreen() {
           gap: 12,
         }}
       >
-        <h1 className="tr-h1">Карточки</h1>
+        <h1 className="tr-h1">{t('title')}</h1>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
           <span
             style={{
@@ -135,8 +139,8 @@ export function CardsScreen() {
             }}
           >
             {extra
-              ? `Дополнительно · ${extraDone}/${today.norm}`
-              : `Сегодня ${counterDone}/${today.norm}`}
+              ? t('extraCounter', { done: extraDone, norm: today.norm })
+              : t('todayCounter', { done: counterDone, norm: today.norm })}
           </span>
           <div style={{ display: 'flex', gap: 5 }} aria-hidden="true">
             {Array.from({ length: today.norm }, (_, k) => (
@@ -161,7 +165,7 @@ export function CardsScreen() {
 
       {extra ? (
         <Callout tone="brand" icon="cards">
-          Дополнительная серия: в норму дня не входит, но так же двигает слова по стадиям.
+          {t('extraCallout')}
         </Callout>
       ) : null}
       {error ? <ErrorBox error={error} retry={() => next.mutate()} /> : null}
@@ -180,14 +184,13 @@ export function CardsScreen() {
             }}
           >
             <LetterTile icon="check" size="md" tone="good" />
-            <h2 className="tr-h1-sm">Повторять пока нечего</h2>
+            <h2 className="tr-h1-sm">{t('emptyTitle')}</h2>
             <p className="tr-muted" style={{ margin: 0, fontSize: 14, lineHeight: '20px' }}>
-              Все слова ждут своего дня. Новые появятся из отчётов, списков учителя — или добавь их
-              сам.
+              {t('emptyText')}
             </p>
           </div>
           <Button variant="primary" size="lg" block icon="plus" to="/words/add">
-            Добавить слова
+            {t('addWords')}
           </Button>
         </Card>
       ) : null}
@@ -206,15 +209,17 @@ export function CardsScreen() {
           >
             <LetterTile icon="check" size="md" tone="good" />
             <h2 className="tr-h1-sm">
-              {phase.extra ? 'Ещё пять позади' : 'На сегодня всё повторено'}
+              {phase.extra ? t('finishedExtraTitle') : t('finishedTitle')}
             </h2>
             <p className="tr-muted" style={{ margin: 0, fontSize: 14, lineHeight: '20px' }}>
               {phase.extra
-                ? 'Дополнительная серия закончена. '
-                : `Норма дня выполнена: ${today.norm} из ${today.norm}, верно ${today.correct}. `}
-              {(state.data?.queue.length ?? 0) > 0
-                ? 'Хочешь — возьми ещё пять слов, следующие плановые появятся завтра.'
-                : 'Больше слов на сегодня нет — следующие появятся завтра.'}
+                ? t('finishedExtra')
+                : t('finishedNorm', {
+                    norm: today.norm,
+                    total: today.norm,
+                    correct: today.correct,
+                  })}{' '}
+              {(state.data?.queue.length ?? 0) > 0 ? t('moreAvailable') : t('noMore')}
             </p>
           </div>
           {(state.data?.queue.length ?? 0) > 0 ? (
@@ -226,11 +231,11 @@ export function CardsScreen() {
               onClick={startExtra}
               disabled={busy}
             >
-              Ещё {today.norm} слов
+              {t('moreWords', { words: words(today.norm) })}
             </Button>
           ) : null}
           <Button variant="ghost" size="md" block to="/">
-            На сегодня хватит
+            {t('enoughToday')}
           </Button>
         </Card>
       ) : null}
@@ -242,15 +247,9 @@ export function CardsScreen() {
               style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 4px 0' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Badge tone="brand">
-                  Стадия {stage} · {STAGE_LABEL[stage]}
-                </Badge>
+                <Badge tone="brand">{t('stageBadge', { stage, label: stageLabel(stage) })}</Badge>
                 <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-                  {stage === 1
-                    ? 'ввод с клавиатуры'
-                    : stage === 2
-                      ? 'подсказка ниже'
-                      : 'проверяет AI'}
+                  {stage === 1 ? t('stage1Hint') : stage === 2 ? t('stage2Hint') : t('stage3Hint')}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -266,7 +265,7 @@ export function CardsScreen() {
               {phase.kind === 'card' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <TextField
-                    label="Твой ответ"
+                    label={t('yourAnswer')}
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     placeholder={card.placeholder}
@@ -282,7 +281,7 @@ export function CardsScreen() {
                   />
                   {grade.isPending && stage === 3 ? (
                     <Callout tone="info" icon="spinner">
-                      Смотрю, как ты употребил слово…
+                      {t('checking')}
                     </Callout>
                   ) : null}
                   <Button
@@ -292,7 +291,7 @@ export function CardsScreen() {
                     disabled={!answer.trim() || busy}
                     onClick={() => grade.mutate({ card, answer: answer.trim() })}
                   >
-                    Проверить
+                    {t('check')}
                   </Button>
                   {card.canGiveUp ? (
                     <Button
@@ -302,7 +301,7 @@ export function CardsScreen() {
                       disabled={busy}
                       onClick={() => grade.mutate({ card, answer: null })}
                     >
-                      Не помню — покажи ответ
+                      {t('giveUp')}
                     </Button>
                   ) : null}
                 </div>
@@ -317,10 +316,7 @@ export function CardsScreen() {
                     {result.message}
                   </Callout>
                   {result.feedback ? (
-                    <Callout
-                      tone="info"
-                      title={result.correct ? 'По грамматике, между делом' : undefined}
-                    >
+                    <Callout tone="info" title={result.correct ? t('grammarAside') : undefined}>
                       {result.feedback}
                     </Callout>
                   ) : null}
@@ -339,7 +335,7 @@ export function CardsScreen() {
                 disabled={busy}
                 onClick={() => skip.mutate(card)}
               >
-                Пропустить
+                {t('skip')}
               </Button>
             ) : (
               <Button
@@ -351,7 +347,7 @@ export function CardsScreen() {
                 disabled={busy}
                 onClick={advance}
               >
-                Дальше
+                {t('next')}
               </Button>
             )}
           </div>
@@ -359,10 +355,7 @@ export function CardsScreen() {
       ) : null}
 
       {state.data && state.data.queue.length > 0 ? (
-        <ListGroup
-          header={extra ? 'Дополнительная серия' : 'В очереди на сегодня'}
-          footer="Порядок: просроченные → приоритетные → новые. Можно ответить на одну карточку и уйти — сессии нет. Ошибка не откатывает стадию, «Не помню» считается как ошибка: слово вернётся завтра."
-        >
+        <ListGroup header={extra ? t('queueExtra') : t('queueToday')} footer={t('queueFooter')}>
           {state.data.queue.slice(0, 3).map((w, k) => (
             <Cell
               key={w.id}
@@ -370,13 +363,18 @@ export function CardsScreen() {
               tile={w.word[0]}
               tileTone={TONES[k % TONES.length]}
               title={w.word}
-              subtitle={`стадия ${w.stage} · ${STAGE_LABEL[w.stage]}${w.source === 'MANUAL' ? ' · добавил сам' : ''}`}
+              subtitle={[
+                t('queueSub', { stage: w.stage, label: stageLabel(w.stage) }),
+                w.source === 'MANUAL' ? t('addedSelf') : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
               badge={
                 w.reason === 'OVERDUE'
-                  ? 'просрочено'
+                  ? t('overdue')
                   : w.reason === 'PRIORITY'
-                    ? 'приоритет'
-                    : 'новое'
+                    ? t('priority')
+                    : t('new')
               }
               badgeTone={
                 w.reason === 'OVERDUE' ? 'cards' : w.reason === 'PRIORITY' ? 'brand' : 'neutral'

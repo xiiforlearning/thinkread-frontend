@@ -1,0 +1,38 @@
+import { defineDict } from '../t';
+
+export const shellDict = defineDict({
+  ru: {
+    openMenu: 'Открыть меню',
+    closeMenu: 'Закрыть меню',
+    dashboard: 'Дашборд',
+    teacherDashboard: 'Дашборд учителя',
+    navOverview: 'Обзор',
+    navStudents: 'Студенты',
+    navFlags: 'Флаги',
+    navGroups: 'Группы',
+    navAi: 'AI по школе',
+    navSettings: 'Настройки',
+    openMiniApp: 'Открыть Mini App',
+    signOut: 'Выйти',
+    language: 'Язык',
+    soon: 'скоро',
+    networkError: 'Нет связи с сервером. Проверьте адрес API и сеть.',
+  },
+  en: {
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
+    dashboard: 'Dashboard',
+    teacherDashboard: "Teacher's dashboard",
+    navOverview: 'Overview',
+    navStudents: 'Students',
+    navFlags: 'Flags',
+    navGroups: 'Groups',
+    navAi: 'School AI',
+    navSettings: 'Settings',
+    openMiniApp: 'Open the Mini App',
+    signOut: 'Sign out',
+    language: 'Language',
+    soon: 'soon',
+    networkError: 'No connection to the server. Check the API address and the network.',
+  },
+});

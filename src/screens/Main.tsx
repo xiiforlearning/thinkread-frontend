@@ -3,8 +3,10 @@ import { useState } from 'react';
 import { keys, useProfile, useProgress, useRecommendations, useSpotCheck } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
 import { useApi } from '../app/session';
+import { mainDict } from '../i18n/screens/main';
+import { type Params, useT } from '../i18n/t';
 import { daysLeftInWeek, days, fmtToday, fmtWeek, words } from '../lib/dates';
-import { levelLabel, METHOD_SHORT } from '../lib/labels';
+import { levelLabel, methodShort } from '../lib/labels';
 import { haptic } from '../telegram/webapp';
 import {
   Avatar,
@@ -18,14 +20,18 @@ import {
 } from '../ui/components';
 import { Link } from 'react-router-dom';
 
-function weekHint(reading: number, listening: number, method: string): string {
-  if (reading >= 3 && listening >= 3) return 'Норма недели выполнена. Всё, что сверх — в плюс.';
+type T = (key: keyof typeof mainDict.ru, params?: Params) => string;
+
+function weekHint(t: T, reading: number, listening: number, method: string): string {
+  if (reading >= 3 && listening >= 3) return t('hintDone');
   if (listening === 0 && reading > 0)
-    return `Один ${method === 'SERIES' ? 'эпизод' : 'подкаст на 6 минут'} — и аудирование будет 1/3.`;
-  if (reading === 0 && listening > 0) return 'Десять страниц книги — и чтение будет 1/3.';
-  if (reading === 0 && listening === 0)
-    return 'Неделя только началась: один отчёт сегодня — и уже не ноль.';
-  return `Осталось ${3 - Math.min(reading, 3)} по чтению и ${3 - Math.min(listening, 3)} по аудированию.`;
+    return method === 'SERIES' ? t('hintListenEpisode') : t('hintListenPodcast');
+  if (reading === 0 && listening > 0) return t('hintRead');
+  if (reading === 0 && listening === 0) return t('hintStart');
+  return t('hintLeft', {
+    reading: 3 - Math.min(reading, 3),
+    listening: 3 - Math.min(listening, 3),
+  });
 }
 
 /** 01 · Главная */
@@ -38,6 +44,7 @@ export function MainScreen() {
   const spot = useSpotCheck();
   const [spotAnswer, setSpotAnswer] = useState('');
   const [spotDone, setSpotDone] = useState(false);
+  const t = useT(mainDict);
 
   const answer = useMutation({
     mutationFn: (text: string | null) => api.me.answerSpotCheck(text),
@@ -61,14 +68,17 @@ export function MainScreen() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span className="tr-eyebrow tr-eyebrow-brand">{fmtToday()}</span>
-          <h1 className="tr-h1">Привет{p?.firstName ? `, ${p.firstName}` : ''}</h1>
+          <h1 className="tr-h1">
+            {t('hello')}
+            {p?.firstName ? `, ${p.firstName}` : ''}
+          </h1>
           <span className="tr-muted">
             {p
-              ? `${p.groups.map((g) => g.title).join(', ') || 'Без группы'} · ${levelLabel(p.level)}`
+              ? `${p.groups.map((g) => g.title).join(', ') || t('noGroup')} · ${levelLabel(p.level)}`
               : ' '}
           </span>
         </div>
-        <Link to="/profile" aria-label="Профиль" style={{ display: 'flex' }}>
+        <Link to="/profile" aria-label={t('profile')} style={{ display: 'flex' }}>
           <Avatar name={p?.displayName ?? '?'} size="md" />
         </Link>
       </div>
@@ -76,28 +86,36 @@ export function MainScreen() {
       {progress.error ? <ErrorBox error={progress.error} retry={() => progress.refetch()} /> : null}
 
       <Card
-        title="Эта неделя"
-        meta={week ? `${fmtWeek(week.weekStart)} · осталось ${days(daysLeftInWeek())}` : undefined}
+        title={t('thisWeek')}
+        meta={
+          week
+            ? `${fmtWeek(week.weekStart)} · ${t('daysLeft', { days: days(daysLeftInWeek()) })}`
+            : undefined
+        }
       >
         {week ? (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-around', padding: '4px 0' }}>
-              <ProgressRing value={week.reading.done} max={week.reading.norm} label="Чтение" />
+              <ProgressRing
+                value={week.reading.done}
+                max={week.reading.norm}
+                label={t('reading')}
+              />
               <ProgressRing
                 value={week.listening.done}
                 max={week.listening.norm}
-                label="Аудирование"
+                label={t('listening')}
                 tone="listen"
               />
               <ProgressRing
                 value={cards?.done ?? 0}
                 max={cards?.norm ?? 5}
-                label="Карточки"
+                label={t('cards')}
                 tone="cards"
               />
             </div>
             <Callout tone="info" icon="headphones">
-              {weekHint(week.reading.done, week.listening.done, p?.listeningMethod ?? '')}
+              {weekHint(t, week.reading.done, week.listening.done, p?.listeningMethod ?? '')}
             </Callout>
           </>
         ) : (
@@ -108,16 +126,16 @@ export function MainScreen() {
       {spot.data && !spotDone ? (
         <Card
           tone="wash-listen"
-          title={`Кстати, про «${spot.data.sourceTitle ?? 'недавний подкаст'}»`}
-          meta="ты слушал недавно"
+          title={t('spotTitle', { title: spot.data.sourceTitle ?? t('recentPodcast') })}
+          meta={t('spotMeta')}
         >
           <span className="tr-body">{spot.data.question}</span>
           <div className="tr-field-row">
             <TextField
-              label="Пара слов по памяти"
+              label={t('spotLabel')}
               value={spotAnswer}
               onChange={(e) => setSpotAnswer(e.target.value)}
-              placeholder="They said…"
+              placeholder={t('spotPlaceholder')}
             />
             <Button
               variant="primary"
@@ -126,7 +144,7 @@ export function MainScreen() {
               disabled={!spotAnswer.trim() || answer.isPending}
               onClick={() => answer.mutate(spotAnswer.trim())}
             >
-              Ответить
+              {t('answer')}
             </Button>
           </div>
           <div>
@@ -136,7 +154,7 @@ export function MainScreen() {
               disabled={answer.isPending}
               onClick={() => answer.mutate(null)}
             >
-              Не помню
+              {t('dontRemember')}
             </Button>
           </div>
           {answer.error ? <ErrorBox error={answer.error} /> : null}
@@ -144,42 +162,47 @@ export function MainScreen() {
       ) : null}
       {spotDone ? (
         <Callout tone="good" icon="check">
-          Спасибо, записал. Хорошей недели!
+          {t('spotThanks')}
         </Callout>
       ) : null}
 
       {normDone ? (
-        <Card title="Карточки на сегодня сделаны" meta={`${cards?.done} из ${cards?.norm}`}>
-          <span className="tr-muted">
-            Плановые слова появятся завтра. Можно взять ещё пять вне нормы.
-          </span>
+        <Card
+          title={t('cardsDoneTitle')}
+          meta={t('ofNorm', { done: cards?.done ?? 0, norm: cards?.norm ?? 0 })}
+        >
+          <span className="tr-muted">{t('cardsDoneText')}</span>
           <Button variant="tonal" size="md" block icon="cards" to="/cards">
-            Повторить ещё
+            {t('repeatMore')}
           </Button>
         </Card>
       ) : (
         <Button variant="primary" size="lg" block icon="cards" to="/cards">
           {cards?.available
-            ? `Повторить ${words(Math.max(cards.norm - cards.done, 1))}`
-            : 'Повторить слова'}
+            ? t('repeatWords', { words: words(Math.max(cards.norm - cards.done, 1)) })
+            : t('repeatAny')}
         </Button>
       )}
 
-      <ListGroup header="Действия">
+      <ListGroup header={t('actions')}>
         <Cell
           to="/reports/new"
           tileIcon="edit"
           tileTone="listen"
-          title="Сдать отчёт"
-          subtitle="Чтение или аудирование"
+          title={t('submitReport')}
+          subtitle={t('submitReportSub')}
           chevron
         />
         <Cell
           to="/words"
           tileIcon="book"
           tileTone="cards"
-          title="Словарь"
-          subtitle={wordsStat ? `${words(wordsStat.total)} · ${wordsStat.learned} выучено` : '…'}
+          title={t('dictionary')}
+          subtitle={
+            wordsStat
+              ? `${words(wordsStat.total)} · ${t('learnedCount', { n: wordsStat.learned })}`
+              : '…'
+          }
           chevron
         />
         {teacher ? (
@@ -187,9 +210,9 @@ export function MainScreen() {
             to="/words/teacher"
             tileIcon="list"
             tileTone="brand"
-            title="Слова от учителя"
-            subtitle={`${teacher.list.title} · ${words(missing)}, которых у тебя нет`}
-            badge="новое"
+            title={t('teacherWords')}
+            subtitle={`${teacher.list.title} · ${t('missingWords', { words: words(missing) })}`}
+            badge={t('newBadge')}
             badgeTone="brand"
             chevron
           />
@@ -198,8 +221,8 @@ export function MainScreen() {
           to="/reports/method"
           tileIcon="headphones"
           tileTone="brand"
-          title="Как слушать"
-          subtitle={p ? `Методика: ${METHOD_SHORT[p.listeningMethod]} · 6 шагов` : '…'}
+          title={t('howToListen')}
+          subtitle={p ? t('methodSub', { method: methodShort(p.listeningMethod) }) : '…'}
           chevron
         />
       </ListGroup>

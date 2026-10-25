@@ -4,6 +4,8 @@ import type { Cefr, Word, WordsQuery } from '../api/types';
 import { downloadText, useRecommendations, useSummary, useWords } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
 import { useApi } from '../app/session';
+import { dictionaryDict } from '../i18n/screens/dictionary';
+import { tr, useT } from '../i18n/t';
 import { words as wordsLabel } from '../lib/dates';
 import {
   Button,
@@ -30,9 +32,15 @@ function toQuery(f: Filter, q: string, cefr: Cefr | ''): WordsQuery {
 }
 
 function sub(w: Word): string {
-  const t = w.translation ?? 'перевод подбирается…';
+  const t = w.translation ?? tr(dictionaryDict, 'translationPending');
   if (w.priority === 'HIGH' && w.status !== 'LEARNED')
-    return `${t} · приоритет${w.source === 'TEACHER' ? ' · от учителя' : ''}`;
+    return [
+      t,
+      tr(dictionaryDict, 'priority'),
+      w.source === 'TEACHER' ? tr(dictionaryDict, 'fromTeacher') : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
   return t;
 }
 
@@ -46,6 +54,7 @@ export function DictionaryScreen() {
   const words = useWords(query);
   const summary = useSummary();
   const recs = useRecommendations();
+  const t = useT(dictionaryDict);
 
   const exportCsv = useMutation({
     mutationFn: () => api.words.exportText('csv'),
@@ -58,12 +67,18 @@ export function DictionaryScreen() {
   const items = words.data ?? [];
   const header =
     filter === 'learned'
-      ? `Выучено · ${s?.learned ?? ''}`
+      ? t('headerLearned', { n: s?.learned ?? '' })
       : filter === 'learning'
-        ? `Изучается · ${s?.learning ?? ''}`
+        ? t('headerLearning', { n: s?.learning ?? '' })
         : filter === 'priority'
-          ? `Приоритетные · ${s?.priority ?? ''}`
-          : `Все слова · ${s?.total ?? ''}`;
+          ? t('headerPriority', { n: s?.priority ?? '' })
+          : t('headerAll', { n: s?.total ?? '' });
+  const filters: Array<[Filter, string]> = [
+    ['all', t('filterAll')],
+    ['learning', t('filterLearning')],
+    ['priority', t('filterPriority')],
+    ['learned', t('filterLearned')],
+  ];
 
   return (
     <Screen
@@ -72,7 +87,7 @@ export function DictionaryScreen() {
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <h1 className="tr-h1" style={{ flexGrow: 1 }}>
-              Словарь{' '}
+              {t('title')}{' '}
               {s ? (
                 <span
                   style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink-2)', letterSpacing: 0 }}
@@ -83,25 +98,18 @@ export function DictionaryScreen() {
             </h1>
             <IconButton
               icon="download"
-              label="Экспорт CSV"
+              label={t('exportCsv')}
               onClick={() => exportCsv.mutate()}
               disabled={exportCsv.isPending}
             />
           </div>
           <SearchField
-            placeholder="Найти слово или перевод"
+            placeholder={t('searchPlaceholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
           <div className="tr-chips">
-            {(
-              [
-                ['all', 'Все'],
-                ['learning', 'Изучается'],
-                ['priority', 'Приоритетные'],
-                ['learned', 'Выучено'],
-              ] as Array<[Filter, string]>
-            ).map(([k, label]) => (
+            {filters.map(([k, label]) => (
               <Chip key={k} selected={filter === k} onClick={() => setFilter(k)}>
                 {label}
               </Chip>
@@ -111,7 +119,7 @@ export function DictionaryScreen() {
               selected={cefr !== ''}
               onClick={() => setCefr(CEFR[(CEFR.indexOf(cefr) + 1) % CEFR.length])}
             >
-              CEFR: {cefr || 'все'}
+              {t('cefr', { level: cefr || t('cefrAll') })}
             </Chip>
           </div>
         </>
@@ -120,21 +128,20 @@ export function DictionaryScreen() {
       {teacher && filter === 'all' && !q ? (
         <Card
           tone="wash-brand"
-          title="Рекомендовано учителем"
+          title={t('teacherTitle')}
           meta={`${teacher.list.title} · ${wordsLabel(missing)}`}
           to="/words/teacher"
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className="tr-muted" style={{ flexGrow: 1, color: 'var(--on-brand-wash)' }}>
-              Список для твоей группы. {missing} из него у тебя ещё нет — посмотри и добавь одним
-              нажатием.
+              {t('teacherText', { missing })}
             </span>
-            <Icon name="chevron-right" label="Открыть список" />
+            <Icon name="chevron-right" label={t('openList')} />
           </div>
         </Card>
       ) : null}
       <Button variant="tonal" size="md" block icon="plus" to="/words/add">
-        Добавить слова
+        {t('addWords')}
       </Button>
 
       {words.error ? <ErrorBox error={words.error} retry={() => words.refetch()} /> : null}
@@ -142,7 +149,13 @@ export function DictionaryScreen() {
 
       <ListGroup
         header={header}
-        footer={words.data ? `Показано ${items.length}${s ? ` из ${s.total}` : ''}.` : undefined}
+        footer={
+          words.data
+            ? s
+              ? t('shownOf', { n: items.length, total: s.total })
+              : t('shown', { n: items.length })
+            : undefined
+        }
       >
         {words.isLoading ? <Loading /> : null}
         {items.map((w, i) => (
@@ -153,7 +166,7 @@ export function DictionaryScreen() {
             tileTone={TONES[i % 4]}
             title={w.word}
             subtitle={sub(w)}
-            badge={w.status === 'LEARNED' ? 'выучено' : (w.cefr ?? undefined)}
+            badge={w.status === 'LEARNED' ? t('learned') : (w.cefr ?? undefined)}
             badgeTone={w.status === 'LEARNED' ? 'good' : 'brand'}
           />
         ))}
@@ -166,7 +179,7 @@ export function DictionaryScreen() {
               fontSize: 14,
             }}
           >
-            Ничего не нашлось. Попробуй другое слово или добавь его в словарь.
+            {t('nothingFound')}
           </div>
         ) : null}
       </ListGroup>

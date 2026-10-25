@@ -10,6 +10,8 @@ import {
 import { type Api, HttpApi } from '../api/client';
 import { MockApi } from '../api/mock';
 import type { AccessStatus, ApiRole } from '../api/types';
+import { sessionDict } from '../i18n/screens/session';
+import { tr } from '../i18n/t';
 import { apiBaseUrl } from '../lib/api-url';
 import { initData, insideTelegram, tg } from '../telegram/webapp';
 
@@ -53,7 +55,7 @@ const ADMIN_DEMO_KEY = 'thinkread.admin.demo';
 export function openDashboard(roles: ApiRole[], demo: boolean): void {
   const role = roles.includes('OWNER') ? 'OWNER' : 'TEACHER';
   const tgUser = tg()?.initDataUnsafe.user;
-  const name = tgUser?.first_name || (role === 'OWNER' ? 'Владелец' : 'Учитель');
+  const name = tgUser?.first_name || tr(sessionDict, role === 'OWNER' ? 'owner' : 'teacher');
   try {
     if (demo) {
       localStorage.setItem(ADMIN_DEMO_KEY, JSON.stringify('1'));
@@ -122,7 +124,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setState({ kind: 'error', message: e instanceof Error ? e.message : 'Не удалось войти' });
+        setState({
+          kind: 'error',
+          message: e instanceof Error ? e.message : tr(sessionDict, 'loginFailed'),
+        });
       });
     return () => {
       cancelled = true;

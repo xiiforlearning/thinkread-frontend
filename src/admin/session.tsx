@@ -1,5 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import type { ApiRole } from '../api/types';
+import { loginDict } from '../i18n/admin/login';
+import { tr } from '../i18n/t';
 import { apiBaseUrl } from '../lib/api-url';
 import { type AdminApi, HttpAdminApi } from './api';
 import { MockAdminApi } from './mock';
@@ -110,10 +112,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const loginWithToken = useCallback((pasted: string, name?: string) => {
     // Accept the whole terminal output of `pnpm dev:token`: the JWT is the first a.b.c token in it.
     const token = pasted.match(/[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/)?.[0];
-    if (!token)
-      throw new Error(
-        'Не нашёл JWT в тексте: нужен токен вида xxx.yyy.zzz из `pnpm dev:token owner`.',
-      );
+    if (!token) throw new Error(tr(loginDict, 'noJwt'));
     const claims = claimsOf(token);
     const staff = claims.roles.includes('OWNER')
       ? 'OWNER'
@@ -122,10 +121,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         : null;
     if (!staff)
       throw new Error(
-        `В токене нет роли OWNER или TEACHER (роли: ${claims.roles.length ? claims.roles.join(', ') : 'не прочитаны'}). Токен владельца даёт \`pnpm dev:token owner\`, учителя — \`pnpm dev:token teacher <telegram id>\`.`,
+        tr(loginDict, 'noStaffRole', {
+          roles: claims.roles.length ? claims.roles.join(', ') : tr(loginDict, 'rolesUnread'),
+        }),
       );
     const user: StaffUser = {
-      name: name?.trim() || (staff === 'OWNER' ? 'Владелец' : 'Учитель'),
+      name: name?.trim() || tr(loginDict, staff === 'OWNER' ? 'ownerName' : 'teacherName'),
       role: staff,
       telegramUserId: claims.telegramUserId,
     };

@@ -4,6 +4,8 @@
  * same rules (one report per type per day, CLARIFY for a missing retelling,
  * dedupe on add, HIGH priority for manual and teacher words).
  */
+import { stageLabel } from '../lib/labels';
+import { defineDict, tr } from '../i18n/t';
 import type { Api } from './client';
 import {
   type AccessStatus,
@@ -25,6 +27,30 @@ import {
   type WordSource,
   type WordStatus,
 } from './types';
+
+/** Texts the real API sends in the student's language (cards/messages.ts, ReportIntakeService). */
+const mockCards = defineDict({
+  ru: {
+    q1: 'Переведи на английский',
+    qNoTranslation: 'Напиши это слово по-английски',
+    q3: 'Составь предложение со словом',
+    ph1: 'Напиши по-английски',
+    ph2: 'Впиши слово',
+    ph3: 'Напиши предложение',
+    clarify:
+      'Спасибо! Для твоего уровня нужен ещё короткий пересказ: 2–3 предложения по-английски, о чём был выпуск.',
+  },
+  en: {
+    q1: 'Translate into English',
+    qNoTranslation: 'Write this word in English',
+    q3: 'Make a sentence with the word',
+    ph1: 'Write it in English',
+    ph2: 'Type the word',
+    ph3: 'Write a sentence',
+    clarify:
+      'Thanks! For your level we also need a short retelling: 2–3 sentences in English about what the episode was about.',
+  },
+});
 
 const DAY = 86_400_000;
 
@@ -168,6 +194,7 @@ export class MockApi implements Api {
       calmMode: false,
       calmUntil: null,
       registeredAt: new Date(this.now().getTime() - 32 * DAY).toISOString(),
+      language: null,
     };
     this.seed();
     this.spot = {
@@ -485,6 +512,11 @@ export class MockApi implements Api {
       return { ...this.profile };
     },
     rename: (f, l) => this.me.register(f, l),
+    setLanguage: async (language) => {
+      await this.tick();
+      this.profile = { ...this.profile, language };
+      return { ...this.profile };
+    },
     calmMode: async (on) => {
       await this.tick();
       this.profile = {
@@ -606,16 +638,11 @@ export class MockApi implements Api {
       wordId: w.id,
       word: w.word,
       stage: a.stage,
-      stageLabel: a.stage === 1 ? 'перевод' : a.stage === 2 ? 'в предложении' : 'своё предложение',
+      stageLabel: stageLabel(a.stage),
       question: a.question,
       shown: a.stage === 3 ? w.word : a.stage === 1 ? (w.translation ?? w.example ?? w.word) : null,
       hint: a.stage === 2 ? a.hint : null,
-      placeholder:
-        a.stage === 1
-          ? 'Напиши по-английски'
-          : a.stage === 2
-            ? 'Впиши слово'
-            : 'Напиши предложение',
+      placeholder: tr(mockCards, a.stage === 1 ? 'ph1' : a.stage === 2 ? 'ph2' : 'ph3'),
       canGiveUp: a.stage !== 3,
       today: this.cardsToday(),
     };
@@ -693,14 +720,12 @@ export class MockApi implements Api {
         stage: w.stage,
         question:
           w.stage === 1
-            ? w.translation
-              ? 'Переведи на английский'
-              : 'Напиши это слово по-английски'
+            ? tr(mockCards, w.translation ? 'q1' : 'qNoTranslation')
             : w.stage === 2 && gap && gap !== w.example
               ? gap
               : w.stage === 2
-                ? 'Напиши это слово по-английски'
-                : 'Составь предложение со словом',
+                ? tr(mockCards, 'qNoTranslation')
+                : tr(mockCards, 'q3'),
         hint: w.stage === 2 ? `(${w.translation ?? lx?.ru ?? '…'})` : null,
         isCorrect: null,
         skipped: false,
@@ -944,8 +969,7 @@ export class MockApi implements Api {
             status: 'CLARIFY',
             draftId: this.draft.id,
             missingFields: ['retelling'],
-            question:
-              'Спасибо! Для твоего уровня нужен ещё короткий пересказ: 2–3 предложения по-английски, о чём был выпуск.',
+            question: tr(mockCards, 'clarify'),
           };
         }
       }

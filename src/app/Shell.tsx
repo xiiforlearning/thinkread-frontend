@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { common } from '../i18n/common';
+import { tr } from '../i18n/t';
 import { ApiError } from '../api/types';
 import { insideTelegram } from '../telegram/webapp';
 import {
@@ -48,7 +50,7 @@ export function Screen({
       ) : null}
       {demo ? (
         <span className="tr-demo-badge">
-          <Badge tone="cards">демо</Badge>
+          <Badge tone="cards">{tr(common, 'demo')}</Badge>
         </span>
       ) : null}
       {head ? <div className="tr-screen-head">{head}</div> : null}
@@ -59,7 +61,7 @@ export function Screen({
   );
 }
 
-export function Loading({ text = 'Загружаю…' }: { text?: string }) {
+export function Loading({ text }: { text?: string }) {
   return (
     <div
       style={{
@@ -72,7 +74,7 @@ export function Loading({ text = 'Загружаю…' }: { text?: string }) {
         fontSize: 14,
       }}
     >
-      <Icon name="spinner" /> {text}
+      <Icon name="spinner" /> {text ?? tr(common, 'loading')}
     </div>
   );
 }
@@ -80,17 +82,17 @@ export function Loading({ text = 'Загружаю…' }: { text?: string }) {
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) return e.message;
   if (e instanceof Error) return e.message;
-  return 'Что-то пошло не так';
+  return tr(common, 'somethingWrong');
 }
 
 export function ErrorBox({ error, retry }: { error: unknown; retry?: () => void }) {
   return (
-    <Callout tone="bad" title="Не получилось">
+    <Callout tone="bad" title={tr(common, 'failed')}>
       {errorText(error)}
       {retry ? (
         <div style={{ marginTop: 8 }}>
           <Button variant="secondary" size="sm" icon="refresh" onClick={retry}>
-            Попробовать снова
+            {tr(common, 'retry')}
           </Button>
         </div>
       ) : null}

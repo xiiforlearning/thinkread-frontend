@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { keys, useCalendar, useProfile, useSummary } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
 import { openDashboard, useApi, useSession } from '../app/session';
+import { type Lang, LANGS, setLang, useLang } from '../i18n/lang';
+import { profileDict } from '../i18n/screens/profile';
+import { useT } from '../i18n/t';
 import { fmtLong, fmtWeek } from '../lib/dates';
 import { levelLabel } from '../lib/labels';
 import { haptic } from '../telegram/webapp';
@@ -11,13 +14,14 @@ import {
   Button,
   Card,
   Cell,
+  Chip,
   DayCell,
   ListGroup,
   NormCell,
   TextField,
 } from '../ui/components';
 
-const DAY_NAMES = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+const LANG_NAME: Record<Lang, string> = { ru: 'Русский', en: 'English' };
 
 /** 09 · Профиль */
 export function ProfileScreen() {
@@ -31,6 +35,9 @@ export function ProfileScreen() {
   const calendar = useCalendar(6);
   const [draft, setDraft] = useState('');
   const [saved, setSaved] = useState(false);
+  const t = useT(profileDict);
+  const lang = useLang();
+  const dayNames = t('dayNames').split(',');
 
   useEffect(() => {
     if (profile.data) setDraft(profile.data.displayName);
@@ -57,6 +64,15 @@ export function ProfileScreen() {
     },
   });
 
+  // The switch applies at once; the backend remembers it for the bot's reminders.
+  const language = useMutation({
+    mutationFn: (next: Lang) => {
+      setLang(next);
+      return api.me.setLanguage(next);
+    },
+    onSuccess: (p) => qc.setQueryData(keys.profile, p),
+  });
+
   const p = profile.data;
   const dirty = !!p && draft.trim() !== p.displayName;
 
@@ -68,8 +84,8 @@ export function ProfileScreen() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
             <h1 className="tr-h1-sm">{p.displayName}</h1>
             <span className="tr-muted">
-              {p.username ? `@${p.username}` : 'без username'}
-              {p.registeredAt ? ` · с ${fmtLong(p.registeredAt)}` : ''}
+              {p.username ? `@${p.username}` : t('noUsername')}
+              {p.registeredAt ? ` · ${t('since', { date: fmtLong(p.registeredAt) })}` : ''}
             </span>
           </div>
         </div>
@@ -77,10 +93,10 @@ export function ProfileScreen() {
         <Loading />
       )}
 
-      <ListGroup header="Данные" footer="Имя и фамилия видны учителю в списке студентов.">
+      <ListGroup header={t('dataHeader')} footer={t('dataFooter')}>
         <div className="tr tr-cell tr-cell-static tr-field-row">
           <TextField
-            label="Имя и фамилия"
+            label={t('fullName')}
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
@@ -93,7 +109,7 @@ export function ProfileScreen() {
             disabled={!dirty || rename.isPending}
             onClick={() => rename.mutate()}
           >
-            {saved && !dirty ? 'Сохранено' : 'Сохранить'}
+            {saved && !dirty ? t('saved') : t('save')}
           </Button>
         </div>
         {rename.error ? (
@@ -101,25 +117,47 @@ export function ProfileScreen() {
             <ErrorBox error={rename.error} />
           </div>
         ) : null}
-        <Cell title="Группа" date={p?.groups.map((g) => g.title).join(', ') || '—'} />
-        <Cell title="Уровень" subtitle="Определяется группой" date={levelLabel(p?.level ?? null)} />
+        <Cell title={t('group')} date={p?.groups.map((g) => g.title).join(', ') || '—'} />
+        <Cell title={t('level')} subtitle={t('levelSub')} date={levelLabel(p?.level ?? null)} />
         <Cell
-          title="Слов выучено"
-          date={summary.data ? `${summary.data.learned} из ${summary.data.total}` : '…'}
+          title={t('wordsLearned')}
+          date={
+            summary.data
+              ? t('learnedOf', { learned: summary.data.learned, total: summary.data.total })
+              : '…'
+          }
         />
+        <div className="tr tr-cell tr-cell-static" style={{ justifyContent: 'space-between' }}>
+          <span className="tr-cell-text">
+            <span className="tr-cell-title">{t('language')}</span>
+            <span className="tr-cell-sub">{t('languageSub')}</span>
+          </span>
+          <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            {LANGS.map((l) => (
+              <Chip
+                key={l}
+                selected={lang === l}
+                disabled={language.isPending}
+                onClick={() => (l === lang ? undefined : language.mutate(l))}
+              >
+                {LANG_NAME[l]}
+              </Chip>
+            ))}
+          </span>
+        </div>
         {staff ? (
           <Cell
             tileIcon="grid"
             tileTone="brand"
-            title="Дашборд учителя"
-            subtitle="Обзор, студенты, флаги"
+            title={t('dashboard')}
+            subtitle={t('dashboardSub')}
             chevron
             onClick={() => openDashboard(roles, demo)}
           />
         ) : null}
       </ListGroup>
 
-      <Card title="История недель" meta="норма 3 + 3">
+      <Card title={t('weeksTitle')} meta={t('weeksMeta')}>
         <div
           style={{
             display: 'grid',
@@ -130,9 +168,9 @@ export function ProfileScreen() {
           }}
         >
           <span />
-          <span style={{ textAlign: 'center' }}>Чтение</span>
-          <span style={{ textAlign: 'center' }}>Аудир.</span>
-          <span>Норма по дням</span>
+          <span style={{ textAlign: 'center' }}>{t('reading')}</span>
+          <span style={{ textAlign: 'center' }}>{t('listeningShort')}</span>
+          <span>{t('normByDay')}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(calendar.data ?? []).map((wk) => {
@@ -157,12 +195,12 @@ export function ProfileScreen() {
                     gap: 3,
                   }}
                 >
-                  {DAY_NAMES.map((d, i) => (
+                  {dayNames.map((d, i) => (
                     // The API counts per week, not per day: light up as many days as there were reports.
                     <DayCell
                       key={d}
                       level={i < total ? (i % 2 === 0 ? 2 : 1) : 0}
-                      title={`${d}: ${i < total ? 'отчёт' : 'нет отчёта'}`}
+                      title={`${d}: ${i < total ? t('report') : t('noReport')}`}
                     />
                   ))}
                 </span>
@@ -174,35 +212,30 @@ export function ProfileScreen() {
         <div className="tr-legend">
           <span>
             <i style={{ background: 'var(--good-wash)' }} />
-            норма выполнена
+            {t('legendDone')}
           </span>
           <span>
             <i style={{ background: 'var(--warn-wash)' }} />
-            частично
+            {t('legendPart')}
           </span>
           <span>
             <i style={{ background: 'var(--bad-wash)' }} />
-            не выполнена
+            {t('legendMissed')}
           </span>
         </div>
       </Card>
 
-      <ListGroup
-        header="Напоминания"
-        footer="Напоминания приходят сообщениями от бота с кнопкой «Открыть». Норма от режима не меняется."
-      >
+      <ListGroup header={t('remindersHeader')} footer={t('remindersFooter')}>
         <Cell
           tileIcon="bell"
           tileTone="brand"
-          title="Спокойный режим"
+          title={t('calmTitle')}
           subtitle={
-            p?.calmMode && p.calmUntil
-              ? `Включён до ${fmtLong(p.calmUntil)}: напоминания реже и мягче`
-              : 'Устал или загружен — напоминания реже на 3 дня'
+            p?.calmMode && p.calmUntil ? t('calmOn', { date: fmtLong(p.calmUntil) }) : t('calmOff')
           }
           onClick={() => calm.mutate(!p?.calmMode)}
           disabled={calm.isPending || !p}
-          badge={p?.calmMode ? 'вкл' : 'выкл'}
+          badge={p?.calmMode ? t('on') : t('off')}
           badgeTone={p?.calmMode ? 'good' : 'neutral'}
         />
       </ListGroup>

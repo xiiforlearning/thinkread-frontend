@@ -12,6 +12,9 @@ import {
   type Week,
   type Word,
 } from '../api/types';
+import { shellDict } from '../i18n/admin/shell';
+import { common } from '../i18n/common';
+import { tr } from '../i18n/t';
 
 export type Health = 'good' | 'warn' | 'bad';
 export type StudentStatus = 'PENDING_NAME' | 'ACTIVE' | 'ARCHIVED';
@@ -397,7 +400,7 @@ export class HttpAdminApi implements AdminApi {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch {
-      throw new ApiError('NETWORK', 'Нет связи с сервером. Проверьте адрес API и сеть.', 0);
+      throw new ApiError('NETWORK', tr(shellDict, 'networkError'), 0);
     }
     const text = await res.text();
     let json: unknown = null;
@@ -415,7 +418,7 @@ export class HttpAdminApi implements AdminApi {
       if (res.status === 401) this.onUnauthorized?.();
       throw new ApiError(
         err?.code ?? String(res.status),
-        err?.message ?? `Ошибка ${res.status}`,
+        err?.message ?? tr(common, 'httpError', { status: res.status }),
         res.status,
         err?.details,
       );

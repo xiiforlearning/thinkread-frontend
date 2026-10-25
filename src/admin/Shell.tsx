@@ -2,11 +2,17 @@ import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ApiError } from '../api/types';
-import { Avatar, Badge, Button, Callout, Icon, NavItem } from '../ui/components';
+import { shellDict } from '../i18n/admin/shell';
+import { common } from '../i18n/common';
+import { LANGS, setLang, useLang } from '../i18n/lang';
+import { tr, useT } from '../i18n/t';
+import { Avatar, Badge, Button, Callout, Chip, Icon, NavItem } from '../ui/components';
 import { useAdminApi, useSession, useStaff } from './session';
 
 /** Dashboard frame from the design: dark sidebar with counters, scrolling main; optional list pane. */
 export function Shell({ pane, children }: { pane?: ReactNode; children: ReactNode }) {
+  const t = useT(shellDict);
+  const lang = useLang();
   const { pathname } = useLocation();
   const { state, signOut } = useSession();
   const user = useStaff();
@@ -34,14 +40,14 @@ export function Shell({ pane, children }: { pane?: ReactNode; children: ReactNod
         <button
           type="button"
           className="ad-burger"
-          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+          aria-label={menuOpen ? t('closeMenu') : t('openMenu')}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((v) => !v)}
         >
           <Icon name={menuOpen ? 'close' : 'menu'} />
         </button>
         <b>ThinkRead</b>
-        <span className="ad-topbar-sub">Дашборд</span>
+        <span className="ad-topbar-sub">{t('dashboard')}</span>
       </header>
       {menuOpen ? (
         <div className="ad-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
@@ -49,13 +55,13 @@ export function Shell({ pane, children }: { pane?: ReactNode; children: ReactNod
       <aside className={menuOpen ? 'ad-side ad-side-open' : 'ad-side'}>
         <div className="ad-brand">
           <b>ThinkRead</b>
-          <span>Дашборд учителя</span>
+          <span>{t('teacherDashboard')}</span>
         </div>
         <NavItem icon="grid" to="/" active={is('/')}>
-          Обзор
+          {t('navOverview')}
         </NavItem>
         <NavItem icon="users" to="/students" active={is('/students')} count={counts.data?.students}>
-          Студенты
+          {t('navStudents')}
         </NavItem>
         <NavItem
           icon="flag"
@@ -64,32 +70,53 @@ export function Shell({ pane, children }: { pane?: ReactNode; children: ReactNod
           count={counts.data?.flags}
           alert={(counts.data?.flags ?? 0) > 0}
         >
-          Флаги
+          {t('navFlags')}
         </NavItem>
         <NavItem icon="chat" to="/groups" active={is('/groups')}>
-          Группы
+          {t('navGroups')}
         </NavItem>
         <NavItem icon="star" to="/ai" active={is('/ai')}>
-          AI по школе
+          {t('navAi')}
         </NavItem>
         {user.role === 'OWNER' ? (
           <NavItem icon="sliders" to="/settings" active={is('/settings')}>
-            Настройки
+            {t('navSettings')}
           </NavItem>
         ) : null}
         <div style={{ flexGrow: 1 }} />
         <NavItem icon="phone" href={webapp}>
-          Открыть Mini App
+          {t('openMiniApp')}
         </NavItem>
         <NavItem icon="logout" onClick={signOut}>
-          Выйти
+          {t('signOut')}
         </NavItem>
+        {/* Language switch: the chips sit on the dark sidebar, so their colours are inverted inline. */}
+        <div className="ad-lang" role="group" aria-label={t('language')}>
+          <span>{t('language')}</span>
+          {LANGS.map((l) => (
+            <Chip
+              key={l}
+              selected={lang === l}
+              onClick={() => setLang(l)}
+              style={{
+                height: 22,
+                padding: '0 8px',
+                fontSize: 11,
+                background: lang === l ? 'var(--surface)' : 'transparent',
+                color: lang === l ? 'var(--ink)' : 'var(--on-hero-muted)',
+                boxShadow: lang === l ? 'none' : 'inset 0 0 0 1px var(--hero-overlay)',
+              }}
+            >
+              {l.toUpperCase()}
+            </Chip>
+          ))}
+        </div>
         <div className="ad-user">
           <Avatar name={user.name} size="sm" tone="white" />
-          <span>
+          <span style={{ minWidth: 0 }}>
             <b>{user.name}</b>
             <span>
-              {user.role} · Asia/Tashkent{demo ? ' · демо' : ''}
+              {user.role} · Asia/Tashkent{demo ? ` · ${tr(common, 'demo')}` : ''}
             </span>
           </span>
         </div>
@@ -122,7 +149,8 @@ export function PageHead({
   );
 }
 
-export function Loading({ text = 'Загружаю…' }: { text?: string }) {
+export function Loading({ text }: { text?: string }) {
+  const t = useT(common);
   return (
     <div
       style={{
@@ -135,7 +163,7 @@ export function Loading({ text = 'Загружаю…' }: { text?: string }) {
         fontSize: 14,
       }}
     >
-      <Icon name="spinner" /> {text}
+      <Icon name="spinner" /> {text ?? t('loading')}
     </div>
   );
 }
@@ -143,17 +171,18 @@ export function Loading({ text = 'Загружаю…' }: { text?: string }) {
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) return e.message;
   if (e instanceof Error) return e.message;
-  return 'Что-то пошло не так';
+  return tr(common, 'somethingWrong');
 }
 
 export function ErrorBox({ error, retry }: { error: unknown; retry?: () => void }) {
+  const t = useT(common);
   return (
-    <Callout tone="bad" title="Не получилось">
+    <Callout tone="bad" title={t('failed')}>
       {errorText(error)}
       {retry ? (
         <div style={{ marginTop: 8 }}>
           <Button variant="secondary" size="sm" icon="refresh" onClick={retry}>
-            Попробовать снова
+            {t('retry')}
           </Button>
         </div>
       ) : null}
@@ -171,5 +200,6 @@ export function Empty({ children }: { children: ReactNode }) {
 
 /** "Появится позже" marker for stage-8 features the real backend does not serve yet. */
 export function SoonBadge() {
-  return <Badge tone="neutral">скоро</Badge>;
+  const t = useT(shellDict);
+  return <Badge tone="neutral">{t('soon')}</Badge>;
 }

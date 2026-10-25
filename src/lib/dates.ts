@@ -1,11 +1,20 @@
-/** Russian date helpers. The school lives in Asia/Tashkent; "today" follows that zone like the backend. */
+import { common } from '../i18n/common';
+import { currentLang } from '../i18n/lang';
+import { plural as pluralOf, tr } from '../i18n/t';
+
+/** Date helpers in the interface language. The school lives in Asia/Tashkent; "today" follows that zone like the backend. */
 export const TZ = 'Asia/Tashkent';
+
+/** Intl locale of the current interface language. */
+export function locale(): string {
+  return currentLang() === 'en' ? 'en-GB' : 'ru-RU';
+}
 
 const DAY = 86_400_000;
 
 export function fmtDay(iso: string | Date, opts: { weekday?: boolean } = {}): string {
   const d = typeof iso === 'string' ? new Date(iso) : iso;
-  return new Intl.DateTimeFormat('ru-RU', {
+  return new Intl.DateTimeFormat(locale(), {
     timeZone: TZ,
     day: 'numeric',
     month: 'short',
@@ -17,7 +26,7 @@ export function fmtDay(iso: string | Date, opts: { weekday?: boolean } = {}): st
 
 export function fmtLong(iso: string | Date): string {
   const d = typeof iso === 'string' ? new Date(iso) : iso;
-  return new Intl.DateTimeFormat('ru-RU', {
+  return new Intl.DateTimeFormat(locale(), {
     timeZone: TZ,
     day: 'numeric',
     month: 'long',
@@ -29,7 +38,7 @@ export function fmtLong(iso: string | Date): string {
 
 /** "Вторник, 23 сентября" */
 export function fmtToday(d = new Date()): string {
-  const s = new Intl.DateTimeFormat('ru-RU', {
+  const s = new Intl.DateTimeFormat(locale(), {
     timeZone: TZ,
     weekday: 'long',
     day: 'numeric',
@@ -42,9 +51,9 @@ export function fmtToday(d = new Date()): string {
 export function fmtWeek(weekStart: string): string {
   const start = new Date(`${weekStart}T12:00:00`);
   const end = new Date(start.getTime() + 6 * DAY);
-  const d = (x: Date) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric' }).format(x);
+  const d = (x: Date) => new Intl.DateTimeFormat(locale(), { day: 'numeric' }).format(x);
   const m = (x: Date) =>
-    new Intl.DateTimeFormat('ru-RU', { month: 'short' }).format(x).replace('.', '');
+    new Intl.DateTimeFormat(locale(), { month: 'short' }).format(x).replace('.', '');
   return m(start) === m(end)
     ? `${d(start)}–${d(end)} ${m(end)}`
     : `${d(start)} ${m(start)} – ${d(end)} ${m(end)}`;
@@ -57,21 +66,17 @@ export function daysLeftInWeek(d = new Date()): number {
   return 7 - (idx < 0 ? 0 : idx);
 }
 
+/** Russian plural forms; in English the `few` form serves as the plural. */
 export function plural(n: number, one: string, few: string, many: string): string {
-  const abs = Math.abs(n) % 100;
-  const last = abs % 10;
-  if (abs > 10 && abs < 20) return many;
-  if (last > 1 && last < 5) return few;
-  if (last === 1) return one;
-  return many;
+  return pluralOf(n, { ru: [one, few, many], en: [one, few] });
 }
 
 export function words(n: number): string {
-  return `${n} ${plural(n, 'слово', 'слова', 'слов')}`;
+  return `${n} ${pluralOf(n, { ru: [tr(common, 'wordOne'), tr(common, 'wordFew'), tr(common, 'wordMany')], en: [tr(common, 'wordOne'), tr(common, 'wordFew')] })}`;
 }
 
 export function days(n: number): string {
-  return `${n} ${plural(n, 'день', 'дня', 'дней')}`;
+  return `${n} ${pluralOf(n, { ru: [tr(common, 'dayOne'), tr(common, 'dayFew'), tr(common, 'dayMany')], en: [tr(common, 'dayOne'), tr(common, 'dayFew')] })}`;
 }
 
 /** Relative "сегодня / вчера / вт, 23 сен". */
@@ -84,7 +89,7 @@ export function fmtRelative(iso: string, now = new Date()): string {
       day: '2-digit',
     }).format(x);
   const d = new Date(iso);
-  if (day(d) === day(now)) return 'сегодня';
-  if (day(d) === day(new Date(now.getTime() - DAY))) return 'вчера';
+  if (day(d) === day(now)) return tr(common, 'today');
+  if (day(d) === day(new Date(now.getTime() - DAY))) return tr(common, 'yesterday');
   return fmtDay(d, { weekday: true });
 }

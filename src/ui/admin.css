@@ -51,13 +51,24 @@
   font-size: 12px;
   color: var(--on-hero-muted);
 }
-.ad-user {
-  padding: 14px 12px 0;
+.ad-lang {
   margin-top: 8px;
+  padding: 12px 12px 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  border-top: 1px solid var(--hero-overlay);
+}
+.ad-lang > span {
+  flex-grow: 1;
+  font-size: 11px;
+  color: var(--on-hero-muted);
+}
+.ad-user {
+  padding: 12px 12px 0;
   display: flex;
   gap: 10px;
   align-items: center;
-  border-top: 1px solid var(--hero-overlay);
 }
 .ad-user b {
   font-size: 13px;

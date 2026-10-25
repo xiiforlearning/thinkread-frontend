@@ -4,6 +4,8 @@ import type { ImportPreview, Word } from '../api/types';
 import { useInvalidateWords } from '../app/hooks';
 import { ErrorBox, Screen } from '../app/Shell';
 import { useApi } from '../app/session';
+import { addWordsDict } from '../i18n/screens/addWords';
+import { useT } from '../i18n/t';
 import { words as wordsLabel } from '../lib/dates';
 import { haptic } from '../telegram/webapp';
 import { Button, Callout, Card, CheckRow, ListGroup, MainButton, TextArea } from '../ui/components';
@@ -24,9 +26,10 @@ export function AddWordsScreen() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [step, setStep] = useState<Step>({ kind: 'input' });
+  const t = useT(addWordsDict);
 
   const parse = useMutation({
-    mutationFn: (t: string) => api.words.importText(t),
+    mutationFn: (v: string) => api.words.importText(v),
     onSuccess: (preview) => {
       haptic('light');
       setStep({ kind: 'preview', preview, excluded: new Set() });
@@ -52,10 +55,10 @@ export function AddWordsScreen() {
 
   const title =
     step.kind === 'input'
-      ? 'Добавить слова'
+      ? t('titleInput')
       : step.kind === 'preview'
-        ? 'Проверь список'
-        : 'Готово';
+        ? t('titlePreview')
+        : t('titleDone');
   const toAdd =
     step.kind === 'preview'
       ? step.preview.items.filter((i) => !i.duplicate && !step.excluded.has(i.word)).length
@@ -64,7 +67,7 @@ export function AddWordsScreen() {
   const bottom =
     step.kind === 'input' ? (
       <MainButton disabled={!text.trim() || parse.isPending} onClick={() => parse.mutate(text)}>
-        {parse.isPending ? 'Разбираю…' : 'Разобрать список'}
+        {parse.isPending ? t('parsing') : t('parse')}
       </MainButton>
     ) : step.kind === 'preview' ? (
       <MainButton
@@ -72,11 +75,11 @@ export function AddWordsScreen() {
         disabled={toAdd === 0 || confirm.isPending}
         onClick={() => confirm.mutate({ id: step.preview.importId, exclude: [...step.excluded] })}
       >
-        {confirm.isPending ? 'Добавляю…' : `Добавить ${toAdd}`}
+        {confirm.isPending ? t('adding') : t('addN', { n: toAdd })}
       </MainButton>
     ) : (
       <MainButton icon="book" to="/words">
-        Открыть словарь
+        {t('openDictionary')}
       </MainButton>
     );
 
@@ -93,12 +96,12 @@ export function AddWordsScreen() {
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
-              label="Список слов"
+              label={t('listLabel')}
               rows={7}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={'resilient — стойкий\nstubborn\nto look forward to, cheat, nap…'}
-              hint="Как угодно: через запятую, в столбик, с переводом или без. Перевод, пример и уровень подберёт AI, твой перевод — в приоритете."
+              placeholder={t('listPlaceholder')}
+              hint={t('listHint')}
             />
             <input
               ref={fileRef}
@@ -114,7 +117,7 @@ export function AddWordsScreen() {
               icon="upload"
               onClick={() => fileRef.current?.click()}
             >
-              Или файл .txt / .csv
+              {t('orFile')}
             </Button>
           </Card>
         </>
@@ -122,14 +125,12 @@ export function AddWordsScreen() {
 
       {step.kind === 'preview' ? (
         <>
-          <Callout tone="brand" title={`Нашёл ${wordsLabel(step.preview.found)}`}>
-            {step.preview.duplicates
-              ? `${step.preview.duplicates} уже есть в словаре — их пропущу. `
-              : ''}
-            Сними галочку с лишних.
+          <Callout tone="brand" title={t('found', { words: wordsLabel(step.preview.found) })}>
+            {step.preview.duplicates ? `${t('duplicates', { n: step.preview.duplicates })} ` : ''}
+            {t('uncheckExtra')}
           </Callout>
           {confirm.error ? <ErrorBox error={confirm.error} /> : null}
-          <ListGroup header="Новые слова">
+          <ListGroup header={t('newWords')}>
             {step.preview.items.map((it) => (
               <CheckRow
                 key={it.word}
@@ -142,8 +143,8 @@ export function AddWordsScreen() {
                   setStep({ ...step, excluded });
                 }}
                 title={it.word}
-                subtitle={it.translation ?? 'перевод подберёт AI'}
-                badge={it.duplicate ? 'уже есть' : undefined}
+                subtitle={it.translation ?? t('translationByAi')}
+                badge={it.duplicate ? t('alreadyHave') : undefined}
                 badgeTone="neutral"
               />
             ))}
@@ -156,19 +157,22 @@ export function AddWordsScreen() {
               setStep({ kind: 'input' });
             }}
           >
-            Отмена
+            {t('cancel')}
           </Button>
         </>
       ) : null}
 
       {step.kind === 'done' ? (
         <>
-          <Callout tone="good" icon="check" title={`Добавлено ${wordsLabel(step.added.length)}`}>
-            Все со статусом «изучается», стадия 1, с приоритетом. Завтра они начнут появляться в
-            карточках.
+          <Callout
+            tone="good"
+            icon="check"
+            title={t('addedTitle', { words: wordsLabel(step.added.length) })}
+          >
+            {t('addedText')}
           </Callout>
           <Button variant="secondary" size="md" block icon="cards" to="/cards">
-            Повторить сейчас
+            {t('reviewNow')}
           </Button>
         </>
       ) : null}
