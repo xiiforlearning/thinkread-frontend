@@ -151,7 +151,7 @@ export function WordScreen() {
               disabled={priority.isPending}
               onClick={() => priority.mutate(prio ? 'NORMAL' : 'HIGH')}
             >
-              {prio ? 'В приоритете' : 'Повторять чаще'}
+              {prio ? 'В приоритете' : 'Добавить в приоритет'}
             </Chip>
           </div>
         </Card>

@@ -30,6 +30,12 @@ button {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
+  /* Opened from the bot's profile («OPEN») Telegram draws its header over the page: the SDK
+     publishes the covered height, iOS the status bar. Zero when the header is outside. */
+  padding-top: calc(
+    max(env(safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px)) +
+      var(--tg-content-safe-area-inset-top, 0px)
+  );
 }
 .tr-screen {
   flex-grow: 1;

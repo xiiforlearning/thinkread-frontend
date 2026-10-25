@@ -78,10 +78,10 @@ export interface CardView {
   today: TodayCards;
 }
 
+/** A queue entry shows the word and its stage only — never the translation (that is the answer). */
 export interface CardQueueItem {
   id: string;
   word: string;
-  translation: string | null;
   stage: 1 | 2 | 3;
   priority: WordPriority;
   source: WordSource;

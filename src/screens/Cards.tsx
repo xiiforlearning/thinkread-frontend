@@ -271,6 +271,8 @@ export function CardsScreen() {
                     onChange={(e) => setAnswer(e.target.value)}
                     placeholder={card.placeholder}
                     autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
                     autoCapitalize={stage === 3 ? 'sentences' : 'none'}
                     disabled={busy}
                     onKeyDown={(e) => {

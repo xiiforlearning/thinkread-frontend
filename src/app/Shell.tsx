@@ -27,8 +27,8 @@ export function Screen({
   children,
 }: {
   tab?: TabKey;
-  /** Route of the previous screen; enables the Telegram BackButton. */
-  back?: string;
+  /** Route of the previous screen, or an in-screen step back; enables the Telegram BackButton. */
+  back?: string | (() => void);
   /** Non-scrolling header block (title + segmented control). */
   head?: ReactNode;
   bottom?: ReactNode;
@@ -41,7 +41,10 @@ export function Screen({
   return (
     <div className="tr tr-mobile tr-app">
       {!native ? (
-        <TelegramHeader back={!!back} onBack={() => (back ? navigate(back) : undefined)} />
+        <TelegramHeader
+          back={!!back}
+          onBack={() => (typeof back === 'string' ? navigate(back) : back?.())}
+        />
       ) : null}
       {demo ? (
         <span className="tr-demo-badge">

@@ -89,6 +89,10 @@ export function AddWordsScreen() {
           {parse.error ? <ErrorBox error={parse.error} /> : null}
           <Card>
             <TextArea
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               label="Список слов"
               rows={7}
               value={text}

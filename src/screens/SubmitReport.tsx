@@ -27,6 +27,32 @@ import {
   TextField,
 } from '../ui/components';
 
+/**
+ * The corrections form keeps what the student typed as strings: a cleared number field stays
+ * empty instead of snapping back to the parsed value (the «залипает на 2» bug), and only the
+ * fields that differ from the report are sent on «Всё верно».
+ */
+type Draft = Partial<Record<keyof ReportPatch, string>>;
+const NUMERIC: ReadonlySet<keyof ReportPatch> = new Set([
+  'pages',
+  'firstPassPct',
+  'secondPassPct',
+  'listenCount',
+]);
+
+function draftToPatch(draft: Draft, report: Report): ReportPatch {
+  const patch: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(draft) as Array<[keyof ReportPatch, string | undefined]>) {
+    if (v === undefined) continue;
+    const text = v.trim();
+    if (text === '') continue;
+    const value = NUMERIC.has(k) ? Number(text) : text;
+    if (NUMERIC.has(k) && !Number.isFinite(value)) continue;
+    if (value !== (report as unknown as Record<string, unknown>)[k]) patch[k] = value;
+  }
+  return patch as ReportPatch;
+}
+
 type Step =
   | { kind: 'type' }
   | { kind: 'text'; type: ReportType }
@@ -57,7 +83,7 @@ export function SubmitReportScreen() {
   const [step, setStep] = useState<Step>({ kind: 'type' });
   const [text, setText] = useState('');
   const [retell, setRetell] = useState('');
-  const [edit, setEdit] = useState<ReportPatch>({});
+  const [edit, setEdit] = useState<Draft>({});
 
   useEffect(() => {
     const t = params.get('type');
@@ -144,18 +170,19 @@ export function SubmitReportScreen() {
     ) : null;
 
   function savePatch(report: Report) {
-    const changed = Object.fromEntries(
-      Object.entries(edit).filter(
-        ([k, v]) =>
-          v !== undefined && v !== '' && v !== (report as unknown as Record<string, unknown>)[k],
-      ),
-    ) as ReportPatch;
+    const changed = draftToPatch(edit, report);
     if (Object.keys(changed).length) patch.mutate({ id: report.id, patch: changed });
   }
 
   return (
     <Screen
-      back={step.kind === 'type' || step.kind === 'result' ? '/reports' : undefined}
+      back={
+        step.kind === 'type' || step.kind === 'result'
+          ? '/reports'
+          : step.kind === 'text'
+            ? () => setStep({ kind: 'type' })
+            : () => setStep({ kind: 'text', type: step.type })
+      }
       bottom={bottom}
     >
       <h1 className="tr-h1-sm">{title}</h1>
@@ -321,8 +348,8 @@ function ResultView({
   setEdit,
 }: {
   result: Extract<IntakeResult, { status: 'SAVED' }>;
-  edit: ReportPatch;
-  setEdit: (p: ReportPatch) => void;
+  edit: Draft;
+  setEdit: (p: Draft) => void;
 }) {
   const r = result.report;
   const listening = r.type === 'LISTENING';
@@ -332,7 +359,9 @@ function ResultView({
   const head = listening
     ? `Аудирование ${w.listening.done}/${w.listening.norm} на этой неделе${plus}`
     : `Чтение ${w.reading.done}/${w.reading.norm} на этой неделе${plus}`;
-  const num = (v: string): number | undefined => (v === '' ? undefined : Number(v));
+  /** What the field shows: the student's draft once touched, else the parsed value. */
+  const shown = (k: keyof ReportPatch, parsed: string | number | null): string =>
+    edit[k] ?? (parsed === null ? '' : String(parsed));
   return (
     <>
       <Callout tone="good" icon="check" title={head}>
@@ -341,7 +370,7 @@ function ResultView({
       <Card title="Что засчитано">
         <TextField
           label={listening ? 'Источник' : 'Книга'}
-          value={edit.sourceTitle ?? r.sourceTitle ?? ''}
+          value={shown('sourceTitle', r.sourceTitle)}
           onChange={(e) => setEdit({ ...edit, sourceTitle: e.target.value })}
         />
         <div style={{ display: 'flex', gap: 12 }}>
@@ -351,16 +380,16 @@ function ResultView({
                 label="Понимание, %"
                 type="number"
                 inputMode="numeric"
-                value={edit.firstPassPct ?? r.firstPassPct ?? ''}
-                onChange={(e) => setEdit({ ...edit, firstPassPct: num(e.target.value) })}
+                value={shown('firstPassPct', r.firstPassPct)}
+                onChange={(e) => setEdit({ ...edit, firstPassPct: e.target.value })}
                 style={{ flex: '1 1 0' }}
               />
               <TextField
                 label="Прослушиваний"
                 type="number"
                 inputMode="numeric"
-                value={edit.listenCount ?? r.listenCount ?? ''}
-                onChange={(e) => setEdit({ ...edit, listenCount: num(e.target.value) })}
+                value={shown('listenCount', r.listenCount)}
+                onChange={(e) => setEdit({ ...edit, listenCount: e.target.value })}
                 style={{ flex: '1 1 0' }}
               />
             </>
@@ -370,13 +399,13 @@ function ResultView({
                 label="Страниц"
                 type="number"
                 inputMode="numeric"
-                value={edit.pages ?? r.pages ?? ''}
-                onChange={(e) => setEdit({ ...edit, pages: num(e.target.value) })}
+                value={shown('pages', r.pages)}
+                onChange={(e) => setEdit({ ...edit, pages: e.target.value })}
                 style={{ flex: '1 1 0' }}
               />
               <TextField
                 label="О чём"
-                value={edit.summary ?? r.summary ?? ''}
+                value={shown('summary', r.summary)}
                 onChange={(e) => setEdit({ ...edit, summary: e.target.value })}
                 style={{ flex: '2 1 0' }}
               />

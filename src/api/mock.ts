@@ -655,7 +655,6 @@ export class MockApi implements Api {
           .map((x) => ({
             id: x.id,
             word: x.word,
-            translation: x.translation,
             stage: x.stage,
             priority: x.priority,
             source: x.source,
