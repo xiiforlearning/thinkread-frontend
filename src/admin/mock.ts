@@ -773,6 +773,7 @@ const SETTINGS: Setting[] = [
   { key: 'norms.readingPerWeek', def: 3 },
   { key: 'norms.listeningPerWeek', def: 3 },
   { key: 'norms.cardsPerDay', def: 5 },
+  { key: 'norms.startsOn', def: '2026-10-26' },
   { key: 'cards.correctToAdvance', def: 1 },
   { key: 'cards.stage3ToLearned', def: 1 },
   { key: 'reminders.cardsTime', def: '09:00' },

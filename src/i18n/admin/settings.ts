@@ -21,6 +21,9 @@ export const settingsDict = defineDict({
     readingPerWeek: 'Чтение, отчётов в неделю',
     listeningPerWeek: 'Аудирование, в неделю',
     cardsPerDay: 'Карточек в день',
+    startsOn: 'Считать с',
+    startsOnHint:
+      'До этой даты никто не «молчит», понедельничная сводка не ставит флаги и не рассылается, напоминания не уходят — неделя переезда не считается.',
     correctToAdvance: 'Верных ответов до новой стадии',
     stage3ToLearned: 'Успехов на стадии 3 до «выучено»',
     normsNote: 'Нормы чтения и аудирования считаются раздельно; один отчёт типа в день.',
@@ -96,6 +99,9 @@ export const settingsDict = defineDict({
     readingPerWeek: 'Reading, reports per week',
     listeningPerWeek: 'Listening, per week',
     cardsPerDay: 'Cards per day',
+    startsOn: 'Count from',
+    startsOnHint:
+      'Before this date nobody is “silent”, the Monday summary raises no flags and sends nothing, reminders stay quiet — the week of the move does not count.',
     correctToAdvance: 'Correct answers to the next stage',
     stage3ToLearned: 'Successes on stage 3 until “learned”',
     normsNote: 'Reading and listening norms are counted separately; one report per type per day.',

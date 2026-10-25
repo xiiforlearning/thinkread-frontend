@@ -75,7 +75,7 @@ export function SettingsScreen() {
   const field = (
     key: string,
     label: string,
-    extra?: { type?: 'time' | 'number'; step?: string },
+    extra?: { type?: 'time' | 'number' | 'date'; step?: string },
   ) => {
     const s = byKey.get(key);
     return (
@@ -104,8 +104,8 @@ export function SettingsScreen() {
           setSaved(false);
         }}
         type={extra?.type ?? 'number'}
-        step={extra?.step ?? (extra?.type === 'time' ? undefined : '1')}
-        inputMode={extra?.type === 'time' ? undefined : 'decimal'}
+        step={extra?.step ?? (extra?.type === 'time' || extra?.type === 'date' ? undefined : '1')}
+        inputMode={extra?.type === 'time' || extra?.type === 'date' ? undefined : 'decimal'}
         disabled={!s}
       />
     );
@@ -151,6 +151,12 @@ export function SettingsScreen() {
               {field('norms.readingPerWeek', t('readingPerWeek'))}
               {field('norms.listeningPerWeek', t('listeningPerWeek'))}
               {field('norms.cardsPerDay', t('cardsPerDay'))}
+            </div>
+            <div className="ad-form" style={{ display: 'grid', gap: 12, alignItems: 'end' }}>
+              {field('norms.startsOn', t('startsOn'), { type: 'date' })}
+              <span style={{ fontSize: 12, lineHeight: '16px', color: 'var(--ink-2)' }}>
+                {t('startsOnHint')}
+              </span>
             </div>
             <div
               className="ad-form"
