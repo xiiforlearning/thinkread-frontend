@@ -69,6 +69,9 @@ export function Shell({ pane, children }: { pane?: ReactNode; children: ReactNod
         <NavItem icon="chat" to="/groups" active={is('/groups')}>
           Группы
         </NavItem>
+        <NavItem icon="star" to="/ai" active={is('/ai')}>
+          AI по школе
+        </NavItem>
         {user.role === 'OWNER' ? (
           <NavItem icon="sliders" to="/settings" active={is('/settings')}>
             Настройки

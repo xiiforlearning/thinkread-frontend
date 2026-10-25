@@ -351,6 +351,8 @@ export interface AdminApi {
     ask(studentId: string, question: string, history: ChatTurn[]): Promise<ChatReply>;
     /** Parents' report for the current month (AiPurpose.PARENT_REPORT). */
     parentReport(studentId: string): Promise<ChatReply>;
+    /** The school-wide AI (AiPurpose.SCHOOL_CHAT): the owner about the school, a teacher about their groups. */
+    askSchool(question: string, history: ChatTurn[]): Promise<{ text: string }>;
   };
   ops: {
     /** Owner: send today's reminders now. */
@@ -495,6 +497,7 @@ export class HttpAdminApi implements AdminApi {
       );
       return { text: r.text, copyable: true };
     },
+    askSchool: (question, history) => this.call('POST', '/admin/chat', { question, history }),
   };
 
   ops: AdminApi['ops'] = {

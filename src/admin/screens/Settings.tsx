@@ -21,6 +21,7 @@ const PURPOSE_LABEL: Record<string, string> = {
   SENTENCE_CHECK: 'проверка предложений (карточки)',
   PARENT_REPORT: 'отчёты родителям',
   TEACHER_CHAT: 'чат учителя',
+  SCHOOL_CHAT: 'AI по школе',
 };
 
 /** 15 · Настройки (owner): norms, reminders, health thresholds, staff, AI spend. */

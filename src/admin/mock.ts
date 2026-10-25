@@ -1471,6 +1471,66 @@ export class MockAdminApi implements AdminApi {
       const reply: ChatReply = { text, copyable };
       return reply;
     },
+    askSchool: async (question) => {
+      await delay(900);
+      const q = question.toLowerCase();
+      const mine = STUDENTS.filter(
+        (s) =>
+          !this.archived.has(s.id) && (this.role === 'OWNER' || s.group.teachers.includes(777)),
+      );
+      const met = (s: S, pick: 0 | 1): number =>
+        s.history.slice(1, 4).filter((w) => w[pick] >= 3).length;
+      const pct = (list: S[], pick: 0 | 1): string =>
+        list.length
+          ? `${Math.round((list.filter((s) => (s.history[1]?.[pick] ?? 0) >= 3).length / list.length) * 100)}%`
+          : '0%';
+      if (/отста|слаб|проблем|кто не/.test(q)) {
+        const pick: 0 | 1 = /аудир|слуша/.test(q) ? 1 : 0;
+        const behind = mine.filter((s) => met(s, pick) < 2 || this.healthOf(s) !== 'good');
+        if (behind.length === 0)
+          return { text: 'По фактам отстающих нет: нормы за полные недели держат все.' };
+        return {
+          text: `Отстают по ${pick ? 'аудированию' : 'чтению'} (${behind.length}):\n${behind
+            .map(
+              (s) =>
+                `• ${this.nameOf(s)} (${s.group.title}) — норма ${met(s, pick)} из 3 нед.${s.silent >= 3 ? `, тишина ${s.silent} дн.` : ''}`,
+            )
+            .join('\n')}\nНачать стоит с тех, у кого тишина дольше всего.`,
+        };
+      }
+      if (/сравн|групп/.test(q)) {
+        const groups = GROUPS.filter((g) => this.role === 'OWNER' || g.teachers.includes(777));
+        return {
+          text: groups
+            .map((g) => {
+              const members = mine.filter((s) => s.group.chatId === g.chatId);
+              return `• ${g.title} (${members.length} студ.): чтение ${pct(members, 0)}, аудирование ${pct(members, 1)} за прошлую неделю; проблемных ${g.bad}`;
+            })
+            .join('\n'),
+        };
+      }
+      if (/пометк|флаг/.test(q)) {
+        const flagged = mine.filter((s) => this.healthOf(s) === 'bad');
+        return {
+          text: flagged.length
+            ? `Новые пометки есть у ${flagged.length}: ${flagged.map((s) => this.nameOf(s)).join(', ')}. Это тихие сигналы для учителя — стоит открыть входящие флагов и посмотреть отчёты.`
+            : 'Новых пометок нет.',
+        };
+      }
+      const h = { good: 0, warn: 0, bad: 0 };
+      for (const s of mine) h[this.healthOf(s)] += 1;
+      const missed = mine.filter((s) => (s.history[0]?.[0] ?? 0) + (s.history[0]?.[1] ?? 0) === 0);
+      return {
+        text: `Студентов: ${mine.length}. За прошлую неделю норму по чтению выполнили ${pct(mine, 0)}, по аудированию ${pct(mine, 1)}. Здоровье: активны ${h.good}, отстают ${h.warn}, проблема ${h.bad}. Без отчётов на этой неделе: ${missed.length}${
+          missed.length
+            ? ` (${missed
+                .slice(0, 3)
+                .map((s) => this.nameOf(s))
+                .join(', ')}${missed.length > 3 ? ' и др.' : ''})`
+            : ''
+        }.`,
+      };
+    },
     parentReport: async (studentId) => {
       await delay(900);
       const s = this.find(studentId);

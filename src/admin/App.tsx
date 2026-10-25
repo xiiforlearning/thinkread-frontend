@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { LoginScreen } from './Login';
+import { AssistantScreen } from './screens/Assistant';
 import { FlagsScreen } from './screens/Flags';
 import { GroupsScreen } from './screens/Groups';
 import { OverviewScreen } from './screens/Overview';
@@ -24,6 +25,7 @@ function Gate() {
       <Route path="/flags" element={<FlagsScreen />} />
       <Route path="/flags/:id" element={<FlagsScreen />} />
       <Route path="/groups" element={<GroupsScreen />} />
+      <Route path="/ai" element={<AssistantScreen />} />
       <Route path="/settings" element={owner ? <SettingsScreen /> : <Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
