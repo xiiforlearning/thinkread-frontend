@@ -40,7 +40,12 @@ export function GroupsScreen() {
   const setLevel = useMutation({
     mutationFn: (v: { chatId: number; level: GroupLevel }) =>
       api.groups.setLevel(v.chatId, v.level),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['groups'] }),
+    onSuccess: (g) => {
+      qc.setQueryData<GroupView[]>(['groups'], (list) =>
+        list?.map((x) => (x.chatId === g.chatId ? g : x)),
+      );
+      void qc.invalidateQueries({ queryKey: ['groups'] });
+    },
   });
   const run = useMutation({
     mutationFn: () => api.groups.runCheck(),
@@ -50,7 +55,12 @@ export function GroupsScreen() {
   const toggle = useMutation({
     mutationFn: (l: WordListView) =>
       api.wordLists.patch(l.id, { status: l.status === 'ACTIVE' ? 'CLOSED' : 'ACTIVE' }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['word-lists'] }),
+    onSuccess: (next) => {
+      qc.setQueryData<WordListView[]>(['word-lists'], (list) =>
+        list?.map((x) => (x.id === next.id ? { ...x, ...next } : x)),
+      );
+      void qc.invalidateQueries({ queryKey: ['word-lists'] });
+    },
   });
   const byChat = new Map((groups.data ?? []).map((g) => [g.chatId, g.title]));
   return (

@@ -12,6 +12,7 @@ import { haptic } from '../telegram/webapp';
 import { Badge, Callout, Chip, LetterTile, ListGroup, type Tone } from '../ui/components';
 
 const TONES: Tone[] = ['brand', 'rose', 'listen', 'cards'];
+const QUEUE_KEY = ['cards', 'queue'] as const;
 
 /**
  * 02a · Очередь — the cards queue in the order the cards will come, with the student's two
@@ -24,30 +25,48 @@ export function QueueScreen() {
   const qc = useQueryClient();
   const invalidate = useInvalidateWords();
   const t = useT(queueDict);
-  const queue = useQuery({ queryKey: ['cards', 'queue'], queryFn: () => api.cards.queue() });
+  const queue = useQuery({ queryKey: QUEUE_KEY, queryFn: () => api.cards.queue() });
   const [known, setKnown] = useState<Set<string>>(new Set());
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['cards'] });
     invalidate();
   };
+  // Optimistic: the chip flips the moment it is tapped, the refetch only confirms it. Without
+  // this the row showed inactive → spinner → inactive → active while the queue refetched.
   const priority = useMutation({
     mutationFn: ({ id, priority }: { id: string; priority: WordPriority }) =>
       api.words.priority(id, priority),
-    onSuccess: () => {
-      haptic('light');
-      refresh();
+    onMutate: async ({ id, priority: next }) => {
+      await qc.cancelQueries({ queryKey: QUEUE_KEY });
+      const before = qc.getQueryData<CardQueueEntry[]>(QUEUE_KEY);
+      qc.setQueryData<CardQueueEntry[]>(QUEUE_KEY, (list) =>
+        list?.map((w) =>
+          w.id === id
+            ? {
+                ...w,
+                priority: next,
+                reason: w.overdue ? 'OVERDUE' : next === 'HIGH' ? 'PRIORITY' : 'DUE',
+              }
+            : w,
+        ),
+      );
+      return { before };
     },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.before) qc.setQueryData(QUEUE_KEY, ctx.before);
+    },
+    onSuccess: () => haptic('light'),
+    onSettled: () => refresh(),
   });
   const learned = useMutation({
     mutationFn: (id: string) => api.words.patch(id, { status: 'LEARNED' }),
     onSuccess: (w) => {
       haptic('success');
       setKnown((s) => new Set(s).add(w.id));
-      refresh();
     },
+    onSettled: () => refresh(),
   });
-  const busy = priority.isPending || learned.isPending;
   const prioPending = (id: string) => priority.isPending && priority.variables?.id === id;
   const knownPending = (id: string) => learned.isPending && learned.variables === id;
 
@@ -71,14 +90,14 @@ export function QueueScreen() {
             <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
               <Chip
                 selected={prio}
-                disabled={busy}
+                disabled={knownPending(w.id)}
                 loading={prioPending(w.id)}
                 onClick={() => priority.mutate({ id: w.id, priority: prio ? 'NORMAL' : 'HIGH' })}
               >
                 {t('prioritize')}
               </Chip>
               <Chip
-                disabled={busy}
+                disabled={prioPending(w.id)}
                 loading={knownPending(w.id)}
                 onClick={() => learned.mutate(w.id)}
               >
