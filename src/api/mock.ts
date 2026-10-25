@@ -609,6 +609,10 @@ export class MockApi implements Api {
     return { done: answered.length, correct: answered.filter((a) => a.isCorrect).length, norm: 5 };
   }
 
+  private isOverdue(w: Word): boolean {
+    return !!w.nextDueAt && new Date(w.nextDueAt).getTime() < this.now().setHours(0, 0, 0, 0);
+  }
+
   private cardQueue(): Word[] {
     const now = this.now();
     const todayStart = new Date(now);
@@ -677,26 +681,28 @@ export class MockApi implements Api {
       const w = open ? this.wordsDb.find((x) => x.id === open.wordId) : undefined;
       return {
         today: this.cardsToday(),
-        queue: this.cardQueue()
-          .slice(0, 10)
-          .map((x) => ({
-            id: x.id,
-            word: x.word,
-            stage: x.stage,
-            priority: x.priority,
-            source: x.source,
-            overdue:
-              !!x.nextDueAt && new Date(x.nextDueAt).getTime() < this.now().setHours(0, 0, 0, 0),
-            reason: (x.nextDueAt &&
-            new Date(x.nextDueAt).getTime() < this.now().setHours(0, 0, 0, 0)
-              ? 'OVERDUE'
-              : x.priority === 'HIGH'
-                ? 'PRIORITY'
-                : 'DUE') as 'OVERDUE' | 'PRIORITY' | 'DUE',
-            nextDueAt: x.nextDueAt ?? this.now().toISOString(),
-          })),
+        queue: {
+          due: this.cardQueue().length,
+          overdue: this.cardQueue().filter((x) => this.isOverdue(x)).length,
+          priority: this.cardQueue().filter((x) => x.priority === 'HIGH').length,
+        },
         current: open && w ? this.cardView(open, w) : null,
       };
+    },
+    queue: async () => {
+      await this.tick();
+      return this.cardQueue().map((x) => ({
+        id: x.id,
+        label: x.stage === 3 ? x.word : (x.translation ?? '…'),
+        word: x.stage === 3 ? x.word : null,
+        stage: x.stage,
+        priority: x.priority,
+        source: x.source,
+        overdue: this.isOverdue(x),
+        reason: (this.isOverdue(x) ? 'OVERDUE' : x.priority === 'HIGH' ? 'PRIORITY' : 'DUE') as
+          'OVERDUE' | 'PRIORITY' | 'DUE',
+        nextDueAt: x.nextDueAt ?? this.now().toISOString(),
+      }));
     },
     next: async () => {
       await this.tick();

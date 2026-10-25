@@ -15,6 +15,7 @@ import { NotRegisteredScreen } from './screens/NotRegistered';
 import { OnboardingScreen } from './screens/Onboarding';
 import { OutsideTelegramScreen } from './screens/OutsideTelegram';
 import { ProfileScreen } from './screens/Profile';
+import { QueueScreen } from './screens/Queue';
 import { ReportsScreen } from './screens/Reports';
 import { StaffScreen } from './screens/Staff';
 import { SubmitReportScreen } from './screens/SubmitReport';
@@ -66,6 +67,7 @@ function Gate() {
         <Route path="/" element={<MainScreen />} />
         <Route path="/onboarding" element={<Navigate to="/" replace />} />
         <Route path="/cards" element={<CardsScreen />} />
+        <Route path="/cards/queue" element={<QueueScreen />} />
         <Route path="/words" element={<DictionaryScreen />} />
         <Route path="/words/add" element={<AddWordsScreen />} />
         <Route path="/words/teacher" element={<TeacherWordsScreen />} />

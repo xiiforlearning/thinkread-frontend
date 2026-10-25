@@ -80,10 +80,21 @@ export interface CardView {
   today: TodayCards;
 }
 
-/** A queue entry shows the word and its stage only — never the translation (that is the answer). */
-export interface CardQueueItem {
+/** The cards screen gets numbers only: the words themselves would be the answers of the next cards. */
+export interface CardQueueCounts {
+  due: number;
+  overdue: number;
+  priority: number;
+}
+
+/**
+ * A row of the queue screen, in card order. `label` is what the student may see without a
+ * spoiler: the translation on stages 1–2, the word on stage 3 (`word` is set only then).
+ */
+export interface CardQueueEntry {
   id: string;
-  word: string;
+  label: string;
+  word: string | null;
   stage: 1 | 2 | 3;
   priority: WordPriority;
   source: WordSource;
@@ -94,7 +105,7 @@ export interface CardQueueItem {
 
 export interface CardsState {
   today: TodayCards;
-  queue: CardQueueItem[];
+  queue: CardQueueCounts;
   current: CardView | null;
 }
 

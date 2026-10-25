@@ -30,6 +30,10 @@ export const cardsDict = defineDict({
     grammarAside: 'По грамматике, между делом',
     skip: 'Пропустить',
     next: 'Дальше',
+    queueHeader: 'Очередь',
+    queueCell: 'На сегодня: {words}',
+    queueOverdue: 'просрочено {n}',
+    queuePriority: 'приоритет {n}',
     queueExtra: 'Дополнительная серия',
     queueToday: 'В очереди на сегодня',
     queueFooter:
@@ -69,6 +73,10 @@ export const cardsDict = defineDict({
     grammarAside: 'On grammar, by the way',
     skip: 'Skip',
     next: 'Next',
+    queueHeader: 'Queue',
+    queueCell: 'Today: {words}',
+    queueOverdue: '{n} overdue',
+    queuePriority: '{n} priority',
     queueExtra: 'Extra series',
     queueToday: "In today's queue",
     queueFooter:

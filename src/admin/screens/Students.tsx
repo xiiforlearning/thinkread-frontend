@@ -37,6 +37,7 @@ import {
   reportText,
   silence,
 } from '../format';
+import { appendChat, useChat } from '../chatStore';
 import { Empty, ErrorBox, errorText, Loading, Shell, SoonBadge } from '../Shell';
 import { useAdminApi, useIsOwner } from '../session';
 
@@ -602,22 +603,15 @@ export function CopyButton({ text, label }: { text: string; label?: string }) {
   );
 }
 
-interface Msg {
-  from: 'me' | 'ai';
-  text: string;
-  copyable?: boolean;
-}
-
 /** "Спросить AI" — the teacher's per-student chat (AiPurpose.TEACHER_CHAT, stage 8). */
 function TeacherChat({ id, name }: { id: string; name: string }) {
   const t = useT(studentsDict);
   const api = useAdminApi();
-  const [chat, setChat] = useState<Msg[]>([]);
+  // One conversation per student, kept in chatStore so it survives switching screens.
+  const chatKey = `student:${id}`;
+  const chat = useChat(chatKey);
   const [draft, setDraft] = useState('');
-  useEffect(() => {
-    setChat([]);
-    setDraft('');
-  }, [id]);
+  useEffect(() => setDraft(''), [id]);
   const ask = useMutation({
     mutationFn: (question: string) =>
       api.ai.ask(
@@ -626,10 +620,10 @@ function TeacherChat({ id, name }: { id: string; name: string }) {
         chat.map((m) => ({ role: m.from === 'me' ? 'teacher' : 'ai', text: m.text })),
       ),
     onSuccess: (reply) =>
-      setChat((c) => [...c, { from: 'ai', text: reply.text, copyable: reply.copyable }]),
+      appendChat(chatKey, { from: 'ai', text: reply.text, copyable: reply.copyable }),
   });
   const send = (question: string) => {
-    setChat((c) => [...c, { from: 'me', text: question }]);
+    appendChat(chatKey, { from: 'me', text: question });
     setDraft('');
     ask.mutate(question);
   };

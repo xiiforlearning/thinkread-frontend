@@ -25,6 +25,7 @@ import {
   type WordPriority,
   type WordsQuery,
   type WordStatus,
+  CardQueueEntry,
 } from './types';
 
 /**
@@ -66,6 +67,7 @@ export interface Api {
   };
   cards: {
     state(): Promise<CardsState>;
+    queue(): Promise<CardQueueEntry[]>;
     next(): Promise<{ card: CardView | null; today: TodayCards }>;
     answer(attemptId: string, answer: string): Promise<CardAnswer>;
     giveUp(attemptId: string): Promise<CardAnswer>;
@@ -189,6 +191,7 @@ export class HttpApi implements Api {
 
   cards: Api['cards'] = {
     state: () => this.call('GET', '/me/cards'),
+    queue: () => this.call('GET', '/me/cards/queue'),
     next: () => this.call('POST', '/me/cards/next', {}),
     answer: (attemptId, answer) => this.call('POST', `/me/cards/${attemptId}/answer`, { answer }),
     giveUp: (attemptId) => this.call('POST', `/me/cards/${attemptId}/give-up`, {}),

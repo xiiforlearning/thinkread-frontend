@@ -3,13 +3,11 @@ import { useState } from 'react';
 import { assistantDict } from '../../i18n/admin/assistant';
 import { useT } from '../../i18n/t';
 import { Callout, Card, ChatMessage, Chip, Composer } from '../../ui/components';
+import { appendChat, useChat } from '../chatStore';
 import { errorText, PageHead, Shell } from '../Shell';
 import { useAdminApi, useIsOwner } from '../session';
 
-interface Msg {
-  from: 'me' | 'ai';
-  text: string;
-}
+const CHAT_KEY = 'school';
 
 type PromptKey = keyof typeof assistantDict.ru;
 const PROMPTS_OWNER: PromptKey[] = [
@@ -30,7 +28,8 @@ export function AssistantScreen() {
   const t = useT(assistantDict);
   const api = useAdminApi();
   const owner = useIsOwner();
-  const [chat, setChat] = useState<Msg[]>([]);
+  // The conversation survives leaving the screen: it lives in chatStore, not in state.
+  const chat = useChat(CHAT_KEY);
   const [draft, setDraft] = useState('');
   const ask = useMutation({
     mutationFn: (question: string) =>
@@ -38,12 +37,12 @@ export function AssistantScreen() {
         question,
         chat.map((m) => ({ role: m.from === 'me' ? 'teacher' : 'ai', text: m.text })),
       ),
-    onSuccess: (reply) => setChat((c) => [...c, { from: 'ai', text: reply.text }]),
+    onSuccess: (reply) => appendChat(CHAT_KEY, { from: 'ai', text: reply.text }),
   });
   const send = (question: string) => {
     const q = question.trim();
     if (!q) return;
-    setChat((c) => [...c, { from: 'me', text: q }]);
+    appendChat(CHAT_KEY, { from: 'me', text: q });
     setDraft('');
     ask.mutate(q);
   };

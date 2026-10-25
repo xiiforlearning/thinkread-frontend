@@ -18,10 +18,7 @@ import {
   LetterTile,
   ListGroup,
   TextField,
-  type Tone,
 } from '../ui/components';
-
-const TONES: Tone[] = ['brand', 'rose', 'listen', 'cards'];
 
 type Phase =
   | { kind: 'idle' }
@@ -86,7 +83,7 @@ export function CardsScreen() {
     const today = state.data.today;
     if (state.data.current) setPhase({ kind: 'card', card: state.data.current });
     else if (today.done >= today.norm) setPhase({ kind: 'finished', extra: false });
-    else if (state.data.queue.length === 0) setPhase({ kind: 'empty' });
+    else if (state.data.queue.due === 0) setPhase({ kind: 'empty' });
     else next.mutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.data, phase.kind]);
@@ -219,10 +216,10 @@ export function CardsScreen() {
                     total: today.norm,
                     correct: today.correct,
                   })}{' '}
-              {(state.data?.queue.length ?? 0) > 0 ? t('moreAvailable') : t('noMore')}
+              {(state.data?.queue.due ?? 0) > 0 ? t('moreAvailable') : t('noMore')}
             </p>
           </div>
-          {(state.data?.queue.length ?? 0) > 0 ? (
+          {(state.data?.queue.due ?? 0) > 0 ? (
             <Button
               variant="primary"
               size="lg"
@@ -354,33 +351,25 @@ export function CardsScreen() {
         </>
       ) : null}
 
-      {state.data && state.data.queue.length > 0 ? (
-        <ListGroup header={extra ? t('queueExtra') : t('queueToday')} footer={t('queueFooter')}>
-          {state.data.queue.slice(0, 3).map((w, k) => (
-            <Cell
-              key={w.id}
-              to={`/words/${w.id}`}
-              tile={w.word[0]}
-              tileTone={TONES[k % TONES.length]}
-              title={w.word}
-              subtitle={[
-                t('queueSub', { stage: w.stage, label: stageLabel(w.stage) }),
-                w.source === 'MANUAL' ? t('addedSelf') : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-              badge={
-                w.reason === 'OVERDUE'
-                  ? t('overdue')
-                  : w.reason === 'PRIORITY'
-                    ? t('priority')
-                    : t('new')
-              }
-              badgeTone={
-                w.reason === 'OVERDUE' ? 'cards' : w.reason === 'PRIORITY' ? 'brand' : 'neutral'
-              }
-            />
-          ))}
+      {state.data && state.data.queue.due > 0 ? (
+        <ListGroup header={t('queueHeader')} footer={t('queueFooter')}>
+          <Cell
+            to="/cards/queue"
+            tileIcon="list"
+            tileTone="brand"
+            title={t('queueCell', { words: words(state.data.queue.due) })}
+            subtitle={[
+              state.data.queue.overdue > 0
+                ? t('queueOverdue', { n: state.data.queue.overdue })
+                : null,
+              state.data.queue.priority > 0
+                ? t('queuePriority', { n: state.data.queue.priority })
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            chevron
+          />
         </ListGroup>
       ) : null}
     </Screen>

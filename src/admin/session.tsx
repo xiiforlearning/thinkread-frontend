@@ -4,6 +4,7 @@ import { loginDict } from '../i18n/admin/login';
 import { tr } from '../i18n/t';
 import { apiBaseUrl } from '../lib/api-url';
 import { type AdminApi, HttpAdminApi } from './api';
+import { clearChats } from './chatStore';
 import { MockAdminApi } from './mock';
 
 const TOKEN_KEY = 'thinkread.admin.token';
@@ -99,6 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     write(TOKEN_KEY, null);
     write(USER_KEY, null);
     write(DEMO_KEY, null);
+    clearChats();
     setState({ kind: 'anonymous' });
   }, []);
 
