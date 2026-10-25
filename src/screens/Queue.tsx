@@ -48,6 +48,8 @@ export function QueueScreen() {
     },
   });
   const busy = priority.isPending || learned.isPending;
+  const prioPending = (id: string) => priority.isPending && priority.variables?.id === id;
+  const knownPending = (id: string) => learned.isPending && learned.variables === id;
 
   const row = (w: CardQueueEntry, k: number) => {
     const gone = known.has(w.id);
@@ -70,11 +72,16 @@ export function QueueScreen() {
               <Chip
                 selected={prio}
                 disabled={busy}
+                loading={prioPending(w.id)}
                 onClick={() => priority.mutate({ id: w.id, priority: prio ? 'NORMAL' : 'HIGH' })}
               >
                 {t('prioritize')}
               </Chip>
-              <Chip disabled={busy} onClick={() => learned.mutate(w.id)}>
+              <Chip
+                disabled={busy}
+                loading={knownPending(w.id)}
+                onClick={() => learned.mutate(w.id)}
+              >
                 {t('known')}
               </Chip>
             </span>

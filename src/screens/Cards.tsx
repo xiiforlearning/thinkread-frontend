@@ -218,6 +218,7 @@ export function CardsScreen() {
               icon="cards"
               onClick={startExtra}
               disabled={busy}
+              loading={next.isPending}
             >
               {t('moreWords', { words: words(today.norm) })}
             </Button>
@@ -277,6 +278,7 @@ export function CardsScreen() {
                     size="lg"
                     block
                     disabled={!answer.trim() || busy}
+                    loading={grade.isPending && grade.variables?.answer !== null}
                     onClick={() => grade.mutate({ card, answer: answer.trim() })}
                   >
                     {t('check')}
@@ -287,6 +289,7 @@ export function CardsScreen() {
                       size="md"
                       block
                       disabled={busy}
+                      loading={grade.isPending && grade.variables?.answer === null}
                       onClick={() => grade.mutate({ card, answer: null })}
                     >
                       {t('giveUp')}
@@ -321,6 +324,7 @@ export function CardsScreen() {
                 block
                 style={{ flex: '1 1 0' }}
                 disabled={busy}
+                loading={skip.isPending}
                 onClick={() => skip.mutate(card)}
               >
                 {t('skip')}
@@ -333,6 +337,7 @@ export function CardsScreen() {
                 iconRight="chevron-right"
                 style={{ flex: '1 1 0' }}
                 disabled={busy}
+                loading={next.isPending}
                 onClick={advance}
               >
                 {t('next')}

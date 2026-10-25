@@ -262,7 +262,7 @@ function StudentDetail({ id }: { id: string }) {
                   style={{ flexGrow: 1 }}
                   autoFocus
                 />
-                <Button variant="primary" size="md" type="submit" disabled={rename.isPending}>
+                <Button variant="primary" size="md" type="submit" loading={rename.isPending}>
                   {t('save')}
                 </Button>
                 <Button variant="ghost" size="md" onClick={() => setRenaming(false)}>
@@ -317,7 +317,8 @@ function StudentDetail({ id }: { id: string }) {
             variant="dark"
             size="sm"
             icon="copy"
-            disabled={!api.features.parentReport || parentReport.isPending}
+            disabled={!api.features.parentReport}
+            loading={parentReport.isPending}
             onClick={() => (parent ? setParent(null) : parentReport.mutate())}
           >
             {parentReport.isPending ? t('gatheringFacts') : t('parentReport')}
@@ -327,7 +328,7 @@ function StudentDetail({ id }: { id: string }) {
             <Button
               variant="secondary"
               size="sm"
-              disabled={archive.isPending}
+              loading={archive.isPending}
               onClick={() => {
                 if (archived || window.confirm(t('archiveConfirm', { name: s.name })))
                   archive.mutate(archived);
@@ -340,7 +341,7 @@ function StudentDetail({ id }: { id: string }) {
             variant="ghost"
             size="sm"
             icon="refresh"
-            disabled={recheck.isPending}
+            loading={recheck.isPending}
             onClick={() => recheck.mutate()}
           >
             {recheck.isPending ? t('rechecking') : t('recheck')}
@@ -395,7 +396,7 @@ function StudentDetail({ id }: { id: string }) {
           <FlagRow
             key={f.id}
             f={f}
-            busy={review.isPending}
+            busy={review.isPending && review.variables?.flagId === f.id}
             onReview={(status) => review.mutate({ flagId: f.id, status })}
           />
         ))}
@@ -497,13 +498,13 @@ function FlagRow({
       <span style={{ fontSize: 13, lineHeight: '18px' }}>{f.reason ?? '—'}</span>
       {open ? (
         <div style={{ display: 'flex', gap: 6 }}>
-          <Button variant="dark" size="sm" disabled={busy} onClick={() => onReview('REVIEWED')}>
+          <Button variant="dark" size="sm" loading={busy} onClick={() => onReview('REVIEWED')}>
             {t('reviewed')}
           </Button>
           <Button
             variant="secondary"
             size="sm"
-            disabled={busy}
+            loading={busy}
             onClick={() => onReview('DISMISSED')}
           >
             {t('falseAlarm')}

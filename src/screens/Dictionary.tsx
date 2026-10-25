@@ -100,7 +100,7 @@ export function DictionaryScreen() {
               icon="download"
               label={t('exportCsv')}
               onClick={() => exportCsv.mutate()}
-              disabled={exportCsv.isPending}
+              loading={exportCsv.isPending}
             />
           </div>
           <SearchField

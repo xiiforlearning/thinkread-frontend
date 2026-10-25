@@ -125,6 +125,8 @@ export interface ButtonProps extends Clickable {
   iconRight?: IconName;
   block?: boolean;
   disabled?: boolean;
+  /** The request this button started is in flight: a spinner in place of the icon, no clicks. */
+  loading?: boolean;
   type?: 'button' | 'submit';
   className?: string;
   style?: CSSProperties;
@@ -137,7 +139,8 @@ export function Button({
   icon,
   iconRight,
   block,
-  disabled,
+  disabled: disabledProp,
+  loading,
   type = 'button',
   className,
   style,
@@ -146,6 +149,7 @@ export function Button({
   onClick,
   children,
 }: ButtonProps) {
+  const disabled = disabledProp || loading;
   const cls = cx(
     'tr',
     'tr-btn',
@@ -156,9 +160,9 @@ export function Button({
   );
   const inner = (
     <>
-      {icon ? <Icon name={icon} /> : null}
+      {loading ? <Icon name="spinner" /> : icon ? <Icon name={icon} /> : null}
       {children}
-      {iconRight ? <Icon name={iconRight} /> : null}
+      {iconRight && !loading ? <Icon name={iconRight} /> : null}
     </>
   );
   if (to && !disabled)
@@ -181,7 +185,14 @@ export function Button({
       </a>
     );
   return (
-    <button type={type} className={cls} style={style} disabled={disabled} onClick={onClick}>
+    <button
+      type={type}
+      className={cls}
+      style={style}
+      disabled={disabled}
+      aria-busy={loading ? 'true' : undefined}
+      onClick={onClick}
+    >
       {inner}
     </button>
   );
@@ -196,6 +207,7 @@ export function IconButton({
   to,
   onClick,
   disabled,
+  loading,
 }: Clickable & {
   icon: IconName;
   label: string;
@@ -203,6 +215,8 @@ export function IconButton({
   quiet?: boolean;
   className?: string;
   disabled?: boolean;
+  /** Request in flight: spinner instead of the icon, no clicks. */
+  loading?: boolean;
 }) {
   const cls = cx('tr', 'tr-iconbtn', `tr-iconbtn-${size}`, quiet && 'tr-iconbtn-quiet', className);
   if (to)
@@ -218,9 +232,10 @@ export function IconButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading ? 'true' : undefined}
     >
-      <Icon name={icon} />
+      <Icon name={loading ? 'spinner' : icon} />
     </button>
   );
 }
@@ -228,18 +243,31 @@ export function IconButton({
 export function Chip({
   selected,
   icon,
+  loading,
+  disabled,
   className,
   children,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean; icon?: IconName }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  selected?: boolean;
+  icon?: IconName;
+  /** Request in flight: spinner, no clicks — the tap is visibly taken. */
+  loading?: boolean;
+}) {
   return (
     <button
       type="button"
       className={cx('tr', 'tr-chip', className)}
       aria-pressed={selected ? 'true' : 'false'}
+      aria-busy={loading ? 'true' : undefined}
+      disabled={disabled || loading}
       {...rest}
     >
-      {icon ? <Icon name={icon} style={{ width: 16, height: 16 }} /> : null}
+      {loading ? (
+        <Icon name="spinner" style={{ width: 16, height: 16 }} />
+      ) : icon ? (
+        <Icon name={icon} style={{ width: 16, height: 16 }} />
+      ) : null}
       {children}
     </button>
   );
@@ -394,6 +422,8 @@ export interface CellProps extends Clickable {
   toggle?: boolean;
   onToggle?: (checked: boolean) => void;
   disabled?: boolean;
+  /** Request started by this cell is in flight: a spinner on the right, no clicks. */
+  loading?: boolean;
   health?: HealthStatus;
   flag?: boolean;
   avatarTone?: Tone;
@@ -416,7 +446,11 @@ export function Cell(p: CellProps) {
       );
   }
   let trailing = p.trailing;
-  if (!trailing && (p.badge || p.date || p.norms || p.toggle !== undefined || p.health || p.flag)) {
+  if (p.loading) trailing = <Icon name="spinner" className="tr-cell-chevron" />;
+  else if (
+    !trailing &&
+    (p.badge || p.date || p.norms || p.toggle !== undefined || p.health || p.flag)
+  ) {
     trailing = (
       <>
         {p.date ? <span>{p.date}</span> : null}
@@ -489,8 +523,9 @@ export function Cell(p: CellProps) {
         type="button"
         className={cx('tr', 'tr-cell', p.className)}
         aria-current={current}
+        aria-busy={p.loading ? 'true' : undefined}
         onClick={p.onClick}
-        disabled={p.disabled}
+        disabled={p.disabled || p.loading}
       >
         {body}
       </button>

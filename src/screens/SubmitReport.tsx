@@ -148,6 +148,7 @@ export function SubmitReportScreen() {
     step.kind === 'text' ? (
       <MainButton
         disabled={text.trim().length < 5 || busy}
+        loading={submit.isPending}
         onClick={() => submit.mutate({ type: step.type, text: text.trim() })}
       >
         {busy ? t('parsing') : tr(common, 'send')}
@@ -155,6 +156,7 @@ export function SubmitReportScreen() {
     ) : step.kind === 'clarify' ? (
       <MainButton
         disabled={retell.trim().length < 1 || busy}
+        loading={clarify.isPending}
         onClick={() =>
           clarify.mutate({ type: step.type, draftId: step.draftId, text: retell.trim() })
         }

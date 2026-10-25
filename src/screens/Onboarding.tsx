@@ -47,7 +47,8 @@ export function OnboardingScreen() {
       bottom={
         <MainButton
           icon="check"
-          disabled={!ok || register.isPending}
+          disabled={!ok}
+          loading={register.isPending}
           onClick={() => register.mutate()}
         >
           {register.isPending ? t('saving') : t('start')}

@@ -61,7 +61,7 @@ export function WordScreen() {
               size="lg"
               block
               icon="refresh"
-              disabled={patch.isPending}
+              loading={patch.isPending}
               onClick={() => patch.mutate({ status: 'LEARNING' })}
             >
               {t('backToLearning')}
@@ -70,7 +70,7 @@ export function WordScreen() {
         ) : (
           <MainButton
             icon="check"
-            disabled={patch.isPending}
+            loading={patch.isPending}
             onClick={() => {
               haptic('success');
               patch.mutate({ status: 'LEARNED' });
@@ -111,7 +111,7 @@ export function WordScreen() {
               <Button
                 variant="primary"
                 size="md"
-                disabled={patch.isPending}
+                loading={patch.isPending}
                 onClick={() => {
                   const next = draft.trim();
                   if (next && next !== w.translation) patch.mutate({ translation: next });
@@ -143,7 +143,7 @@ export function WordScreen() {
             <Chip
               selected={prio}
               icon={prio ? 'check' : 'plus'}
-              disabled={priority.isPending}
+              loading={priority.isPending}
               onClick={() => priority.mutate(prio ? 'NORMAL' : 'HIGH')}
             >
               {prio ? t('inPriority') : t('addPriority')}

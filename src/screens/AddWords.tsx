@@ -66,13 +66,18 @@ export function AddWordsScreen() {
 
   const bottom =
     step.kind === 'input' ? (
-      <MainButton disabled={!text.trim() || parse.isPending} onClick={() => parse.mutate(text)}>
+      <MainButton
+        disabled={!text.trim()}
+        loading={parse.isPending}
+        onClick={() => parse.mutate(text)}
+      >
         {parse.isPending ? t('parsing') : t('parse')}
       </MainButton>
     ) : step.kind === 'preview' ? (
       <MainButton
         icon="plus"
-        disabled={toAdd === 0 || confirm.isPending}
+        disabled={toAdd === 0}
+        loading={confirm.isPending}
         onClick={() => confirm.mutate({ id: step.preview.importId, exclude: [...step.excluded] })}
       >
         {confirm.isPending ? t('adding') : t('addN', { n: toAdd })}

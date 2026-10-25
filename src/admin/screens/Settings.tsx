@@ -123,7 +123,8 @@ export function SettingsScreen() {
               size="md"
               icon="check"
               type="submit"
-              disabled={!dirty || save.isPending}
+              disabled={!dirty}
+              loading={save.isPending}
             >
               {save.isPending ? t('saving') : saved ? t('saved') : t('saveChanges')}
             </Button>
@@ -278,6 +279,7 @@ function OpsCard() {
           size="sm"
           icon="bell"
           disabled={busy}
+          loading={reminders.isPending && reminders.variables === 'CARDS'}
           onClick={() => reminders.mutate('CARDS')}
         >
           {t('remindCards')}
@@ -287,6 +289,7 @@ function OpsCard() {
           size="sm"
           icon="bell"
           disabled={busy}
+          loading={reminders.isPending && reminders.variables === 'REPORTS'}
           onClick={() => reminders.mutate('REPORTS')}
         >
           {t('remindReports')}
@@ -296,6 +299,7 @@ function OpsCard() {
           size="sm"
           icon="list"
           disabled={busy}
+          loading={preview.isFetching}
           onClick={() => preview.refetch()}
         >
           {t('showSummary')}
@@ -305,6 +309,7 @@ function OpsCard() {
           size="sm"
           icon="send"
           disabled={busy}
+          loading={summary.isPending}
           onClick={() => summary.mutate()}
         >
           {t('sendSummary')}
@@ -374,6 +379,7 @@ function StaffCard() {
                 variant="ghost"
                 size="sm"
                 disabled={revoke.isPending}
+                loading={revoke.isPending && revoke.variables === s.telegramUserId}
                 onClick={() => revoke.mutate(s.telegramUserId)}
               >
                 {t('revoke')}
@@ -408,7 +414,8 @@ function StaffCard() {
           <Button
             variant="primary"
             size="md"
-            disabled={!/^\d+$/.test(tgId) || grant.isPending}
+            disabled={!/^\d+$/.test(tgId)}
+            loading={grant.isPending}
             onClick={() => grant.mutate()}
           >
             {t('assign')}

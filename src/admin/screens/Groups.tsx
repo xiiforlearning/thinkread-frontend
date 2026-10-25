@@ -83,7 +83,7 @@ export function GroupsScreen() {
               key={g.chatId}
               g={g}
               owner={owner}
-              busy={setLevel.isPending}
+              busy={setLevel.isPending && setLevel.variables?.chatId === g.chatId}
               onLevel={(level) => setLevel.mutate({ chatId: g.chatId, level })}
             />
           ))}
@@ -134,7 +134,7 @@ export function GroupsScreen() {
                 variant={run.data?.started ? 'good' : 'dark'}
                 size="sm"
                 icon="refresh"
-                disabled={run.isPending}
+                loading={run.isPending}
                 onClick={() => run.mutate()}
               >
                 {run.data?.alreadyRunning
@@ -171,7 +171,12 @@ export function GroupsScreen() {
             <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('noLists')}</span>
           ) : null}
           {(lists.data ?? []).map((l) => (
-            <ListRow key={l.id} l={l} busy={toggle.isPending} onToggle={() => toggle.mutate(l)} />
+            <ListRow
+              key={l.id}
+              l={l}
+              busy={toggle.isPending && toggle.variables?.id === l.id}
+              onToggle={() => toggle.mutate(l)}
+            />
           ))}
           <span style={{ fontSize: 12, lineHeight: '16px', color: 'var(--ink-2)' }}>
             {t('listsFooter')}
@@ -308,7 +313,7 @@ function ListRow({ l, busy, onToggle }: { l: WordListView; busy: boolean; onTogg
         {c?.studentsHidden ?? '—'}
       </span>
       <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={onToggle}>
+        <Button variant="ghost" size="sm" loading={busy} onClick={onToggle}>
           {closed ? t('open') : t('close')}
         </Button>
       </span>
@@ -395,7 +400,8 @@ function NewListCard({ groups, owner }: { groups: GroupView[]; owner: boolean })
           block
           icon="list"
           type="submit"
-          disabled={create.isPending || !title.trim() || !text.trim()}
+          disabled={!title.trim() || !text.trim()}
+          loading={create.isPending}
         >
           {create.isPending ? t('creating') : t('createList')}
         </Button>

@@ -142,6 +142,7 @@ export function MainScreen() {
               size="md"
               icon="send"
               disabled={!spotAnswer.trim() || answer.isPending}
+              loading={answer.isPending && answer.variables !== null}
               onClick={() => answer.mutate(spotAnswer.trim())}
             >
               {t('answer')}
@@ -152,6 +153,7 @@ export function MainScreen() {
               variant="ghost"
               size="sm"
               disabled={answer.isPending}
+              loading={answer.isPending && answer.variables === null}
               onClick={() => answer.mutate(null)}
             >
               {t('dontRemember')}

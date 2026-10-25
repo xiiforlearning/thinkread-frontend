@@ -52,7 +52,8 @@ export function TeacherWordsScreen() {
     step.kind === 'list' && rec ? (
       <MainButton
         icon="plus"
-        disabled={count === 0 || accept.isPending}
+        disabled={count === 0}
+        loading={accept.isPending}
         onClick={() => accept.mutate([...checked])}
       >
         {accept.isPending ? t('adding') : t('addN', { n: count })}
@@ -115,7 +116,7 @@ export function TeacherWordsScreen() {
           <Button
             variant="ghost"
             size="md"
-            disabled={dismiss.isPending}
+            loading={dismiss.isPending}
             onClick={() => dismiss.mutate()}
           >
             {t('hideList')}

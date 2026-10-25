@@ -124,6 +124,16 @@ button {
 .tr-spin {
   animation: tr-spin 0.9s linear infinite;
 }
+/* A control whose request is in flight: dimmed, with the spinner, no pointer. */
+.tr-chip[disabled],
+.tr-iconbtn[disabled],
+.tr-cell[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+[aria-busy='true'] {
+  cursor: progress;
+}
 @keyframes tr-spin {
   to {
     transform: rotate(360deg);

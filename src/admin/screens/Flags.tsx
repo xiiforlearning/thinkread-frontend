@@ -168,6 +168,7 @@ function FlagDetail({ id }: { id: string }) {
               size="md"
               icon="check"
               disabled={review.isPending}
+              loading={review.isPending && review.variables === 'REVIEWED'}
               onClick={() => review.mutate('REVIEWED')}
             >
               {t('reviewed')}
@@ -176,6 +177,7 @@ function FlagDetail({ id }: { id: string }) {
               variant="secondary"
               size="md"
               disabled={review.isPending}
+              loading={review.isPending && review.variables === 'DISMISSED'}
               onClick={() => review.mutate('DISMISSED')}
             >
               {t('falseAlarm')}

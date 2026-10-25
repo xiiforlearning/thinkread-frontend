@@ -106,7 +106,8 @@ export function ProfileScreen() {
           <Button
             variant={saved ? 'good' : 'dark'}
             size="md"
-            disabled={!dirty || rename.isPending}
+            disabled={!dirty}
+            loading={rename.isPending}
             onClick={() => rename.mutate()}
           >
             {saved && !dirty ? t('saved') : t('save')}
@@ -138,6 +139,7 @@ export function ProfileScreen() {
                 <Chip
                   key={l}
                   selected={lang === l}
+                  loading={language.isPending && language.variables === l}
                   disabled={language.isPending}
                   onClick={() => (l === lang ? undefined : language.mutate(l))}
                 >
@@ -236,7 +238,8 @@ export function ProfileScreen() {
             p?.calmMode && p.calmUntil ? t('calmOn', { date: fmtLong(p.calmUntil) }) : t('calmOff')
           }
           onClick={() => calm.mutate(!p?.calmMode)}
-          disabled={calm.isPending || !p}
+          disabled={!p}
+          loading={calm.isPending}
           badge={p?.calmMode ? t('on') : t('off')}
           badgeTone={p?.calmMode ? 'good' : 'neutral'}
         />
