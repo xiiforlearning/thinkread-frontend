@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { ApiError } from '../api/types';
 import { shellDict } from '../i18n/admin/shell';
 import { common } from '../i18n/common';
-import { LANGS, setLang, useLang } from '../i18n/lang';
+import { LANG_SWITCH, LANGS, setLang, useLang } from '../i18n/lang';
 import { tr, useT } from '../i18n/t';
 import { Avatar, Badge, Button, Callout, Chip, Icon, NavItem } from '../ui/components';
 import { useAdminApi, useSession, useStaff } from './session';
@@ -90,27 +90,29 @@ export function Shell({ pane, children }: { pane?: ReactNode; children: ReactNod
         <NavItem icon="logout" onClick={signOut}>
           {t('signOut')}
         </NavItem>
-        {/* Language switch: the chips sit on the dark sidebar, so their colours are inverted inline. */}
-        <div className="ad-lang" role="group" aria-label={t('language')}>
-          <span>{t('language')}</span>
-          {LANGS.map((l) => (
-            <Chip
-              key={l}
-              selected={lang === l}
-              onClick={() => setLang(l)}
-              style={{
-                height: 22,
-                padding: '0 8px',
-                fontSize: 11,
-                background: lang === l ? 'var(--surface)' : 'transparent',
-                color: lang === l ? 'var(--ink)' : 'var(--on-hero-muted)',
-                boxShadow: lang === l ? 'none' : 'inset 0 0 0 1px var(--hero-overlay)',
-              }}
-            >
-              {l.toUpperCase()}
-            </Chip>
-          ))}
-        </div>
+        {/* Language switch (hidden while the product is English-only): the chips sit on the dark sidebar, so their colours are inverted inline. */}
+        {LANG_SWITCH ? (
+          <div className="ad-lang" role="group" aria-label={t('language')}>
+            <span>{t('language')}</span>
+            {LANGS.map((l) => (
+              <Chip
+                key={l}
+                selected={lang === l}
+                onClick={() => setLang(l)}
+                style={{
+                  height: 22,
+                  padding: '0 8px',
+                  fontSize: 11,
+                  background: lang === l ? 'var(--surface)' : 'transparent',
+                  color: lang === l ? 'var(--ink)' : 'var(--on-hero-muted)',
+                  boxShadow: lang === l ? 'none' : 'inset 0 0 0 1px var(--hero-overlay)',
+                }}
+              >
+                {l.toUpperCase()}
+              </Chip>
+            ))}
+          </div>
+        ) : null}
         <div className="ad-user">
           <Avatar name={user.name} size="sm" tone="white" />
           <span style={{ minWidth: 0 }}>

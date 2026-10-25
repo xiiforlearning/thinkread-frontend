@@ -86,9 +86,10 @@ src/
 
 Rules: every colour / radius / size is a token from `tokens.css`; user-facing text lives in the
 `src/i18n` dictionaries in Russian and English (`const t = useT(dict)` in a component, `tr(dict, key)`
-in helpers, counts through `plural()`); the language comes from the profile (`PATCH /me/language`,
-the switch in the profile and in the dashboard sidebar) or, before it is chosen, from Telegram's
-`language_code`; the API is the source of truth for data shapes (`src/api/types.ts` mirrors `me/serializers.ts` in the
+in helpers, counts through `plural()`); the product is English for everyone (`FIXED_LANG = 'en'`
+in `src/i18n/lang.ts`, decision 25.10.2026) — set it to null to bring back the switches in the
+profile and the dashboard sidebar, the profile's saved language (`PATCH /me/language`) and
+Telegram's `language_code` as the default; the API is the source of truth for data shapes (`src/api/types.ts` mirrors `me/serializers.ts` in the
 backend). Cards go through `/me/cards` (one attempt at a time; the mock reproduces the same rules).
 
 ## Telegram setup

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { keys, useCalendar, useProfile, useSummary } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
 import { openDashboard, useApi, useSession } from '../app/session';
-import { type Lang, LANGS, setLang, useLang } from '../i18n/lang';
+import { LANG_SWITCH, type Lang, LANGS, setLang, useLang } from '../i18n/lang';
 import { profileDict } from '../i18n/screens/profile';
 import { useT } from '../i18n/t';
 import { fmtLong, fmtWeek } from '../lib/dates';
@@ -127,24 +127,26 @@ export function ProfileScreen() {
               : '…'
           }
         />
-        <div className="tr tr-cell tr-cell-static" style={{ justifyContent: 'space-between' }}>
-          <span className="tr-cell-text">
-            <span className="tr-cell-title">{t('language')}</span>
-            <span className="tr-cell-sub">{t('languageSub')}</span>
-          </span>
-          <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            {LANGS.map((l) => (
-              <Chip
-                key={l}
-                selected={lang === l}
-                disabled={language.isPending}
-                onClick={() => (l === lang ? undefined : language.mutate(l))}
-              >
-                {LANG_NAME[l]}
-              </Chip>
-            ))}
-          </span>
-        </div>
+        {LANG_SWITCH ? (
+          <div className="tr tr-cell tr-cell-static" style={{ justifyContent: 'space-between' }}>
+            <span className="tr-cell-text">
+              <span className="tr-cell-title">{t('language')}</span>
+              <span className="tr-cell-sub">{t('languageSub')}</span>
+            </span>
+            <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              {LANGS.map((l) => (
+                <Chip
+                  key={l}
+                  selected={lang === l}
+                  disabled={language.isPending}
+                  onClick={() => (l === lang ? undefined : language.mutate(l))}
+                >
+                  {LANG_NAME[l]}
+                </Chip>
+              ))}
+            </span>
+          </div>
+        ) : null}
         {staff ? (
           <Cell
             tileIcon="grid"

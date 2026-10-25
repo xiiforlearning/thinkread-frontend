@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { currentLang, detectLang, langChosen, setLang } from '../i18n/lang';
+import { LANG_SWITCH, currentLang, detectLang, langChosen, setLang } from '../i18n/lang';
 import { tg } from '../telegram/webapp';
 import { useProfile } from './hooks';
 import { useApi } from './session';
@@ -16,7 +16,7 @@ export function LanguageSync() {
 
   useEffect(() => {
     const p = profile.data;
-    if (!p || done.current) return;
+    if (!LANG_SWITCH || !p || done.current) return;
     done.current = true;
     if (p.language) {
       setLang(p.language);
