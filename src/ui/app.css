@@ -4,6 +4,9 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  /* Only .tr-screen scrolls. A scrolling document shows an empty strip under the tab bar in
+     Telegram when the WebView document is taller than the visible viewport. */
+  overflow: hidden;
 }
 body {
   background: var(--bg);
@@ -24,8 +27,9 @@ button {
 }
 
 .tr-app {
-  height: 100%;
-  min-height: 100dvh;
+  /* Telegram publishes the visible height of its WebView (it is less than 100vh while the app
+     is not expanded and on iOS with the bottom bar); outside Telegram the dynamic viewport. */
+  height: var(--tg-viewport-stable-height, 100dvh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
