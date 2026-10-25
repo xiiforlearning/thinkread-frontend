@@ -143,6 +143,16 @@ export function DictionaryScreen() {
       <Button variant="tonal" size="md" block icon="plus" to="/words/add">
         {t('addWords')}
       </Button>
+      <ListGroup>
+        <Cell
+          to="/cards/queue"
+          tileIcon="cards"
+          tileTone="brand"
+          title={t('queue')}
+          subtitle={t('queueSub')}
+          chevron
+        />
+      </ListGroup>
 
       {words.error ? <ErrorBox error={words.error} retry={() => words.refetch()} /> : null}
       {exportCsv.error ? <ErrorBox error={exportCsv.error} /> : null}

@@ -9,16 +9,7 @@ import { useT } from '../i18n/t';
 import { words } from '../lib/dates';
 import { stageLabel } from '../lib/labels';
 import { haptic } from '../telegram/webapp';
-import {
-  Badge,
-  Button,
-  Callout,
-  Card,
-  Cell,
-  LetterTile,
-  ListGroup,
-  TextField,
-} from '../ui/components';
+import { Badge, Button, Callout, Card, LetterTile, TextField } from '../ui/components';
 
 type Phase =
   | { kind: 'idle' }
@@ -349,28 +340,6 @@ export function CardsScreen() {
             )}
           </div>
         </>
-      ) : null}
-
-      {state.data && state.data.queue.due > 0 ? (
-        <ListGroup header={t('queueHeader')} footer={t('queueFooter')}>
-          <Cell
-            to="/cards/queue"
-            tileIcon="list"
-            tileTone="brand"
-            title={t('queueCell', { words: words(state.data.queue.due) })}
-            subtitle={[
-              state.data.queue.overdue > 0
-                ? t('queueOverdue', { n: state.data.queue.overdue })
-                : null,
-              state.data.queue.priority > 0
-                ? t('queuePriority', { n: state.data.queue.priority })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            chevron
-          />
-        </ListGroup>
       ) : null}
     </Screen>
   );

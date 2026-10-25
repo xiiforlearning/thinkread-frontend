@@ -96,7 +96,7 @@ export function QueueScreen() {
   const list = queue.data ?? [];
   return (
     <Screen
-      back="/cards"
+      back="/words"
       head={
         <>
           <h1 className="tr-h1">{t('title')}</h1>
