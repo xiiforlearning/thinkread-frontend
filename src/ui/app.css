@@ -4,8 +4,12 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  /* Only .tr-screen scrolls. A scrolling document shows an empty strip under the tab bar in
-     Telegram when the WebView document is taller than the visible viewport. */
+}
+/* Mini App only (main.tsx marks html.tr-mini; the dashboard shares this file): only .tr-screen
+   scrolls. A scrolling document showed an empty strip under the tab bar in Telegram when the
+   WebView document was taller than the visible viewport. */
+html.tr-mini,
+html.tr-mini body {
   overflow: hidden;
 }
 body {

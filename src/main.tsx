@@ -12,6 +12,7 @@ import './ui/app.css';
 
 setupWebApp();
 document.documentElement.lang = currentLang();
+document.documentElement.classList.add('tr-mini');
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
