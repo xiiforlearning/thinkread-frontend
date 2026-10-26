@@ -41,7 +41,7 @@ import { appendChat, useChat } from '../chatStore';
 import { Empty, ErrorBox, errorText, Loading, Shell, SoonBadge } from '../Shell';
 import { useAdminApi, useIsOwner } from '../session';
 
-type HealthFilter = 'all' | Health | 'archived';
+type HealthFilter = 'all' | Health | 'pending' | 'archived';
 
 /** 12 · Студенты: list pane (search, health chips, group) + the selected student's card. */
 export function StudentsScreen() {
@@ -62,9 +62,12 @@ export function StudentsScreen() {
     queryFn: () =>
       api.students.list({
         q: q || undefined,
-        // 'archived' is a status, not a health: the API hides archived students unless asked
-        health: health === 'all' || health === 'archived' ? undefined : health,
-        status: health === 'archived' ? 'ARCHIVED' : undefined,
+        // 'pending' and 'archived' are statuses, not healths: the API lists ACTIVE + PENDING_NAME
+        // unless a status is asked for
+        health:
+          health === 'all' || health === 'pending' || health === 'archived' ? undefined : health,
+        status:
+          health === 'archived' ? 'ARCHIVED' : health === 'pending' ? 'PENDING_NAME' : undefined,
         groupChatId: group ? Number(group) : undefined,
       }),
   });
@@ -81,6 +84,7 @@ export function StudentsScreen() {
     ['bad', t('chipBad')],
     ['warn', t('chipWarn')],
     ['good', t('chipGood')],
+    ['pending', t('chipPending')],
     ['archived', t('chipArchived')],
   ];
   const pane = (
@@ -235,6 +239,7 @@ function StudentDetail({ id }: { id: string }) {
   if (!card.data) return null;
   const { student: s, calendar, words, flags, canEdit } = card.data;
   const archived = s.status === 'ARCHIVED';
+  const pending = s.status === 'PENDING_NAME';
   const thisWeek = calendar[0];
   const newFlags = flags.filter((f) => f.status === 'NEW').length;
   const activityDays = new Set((reports.data?.data ?? []).map((r) => r.createdAt.slice(0, 10)));
@@ -302,8 +307,14 @@ function StudentDetail({ id }: { id: string }) {
               }}
             >
               <HealthDot status={s.health} />
-              <Badge tone={archived ? 'neutral' : s.dmBlocked ? 'bad' : 'good'}>
-                {archived ? t('archived') : s.dmBlocked ? t('botBlocked') : t('accessActive')}
+              <Badge tone={archived ? 'neutral' : s.dmBlocked ? 'bad' : pending ? 'warn' : 'good'}>
+                {archived
+                  ? t('archived')
+                  : s.dmBlocked
+                    ? t('botBlocked')
+                    : pending
+                      ? t('pending')
+                      : t('accessActive')}
               </Badge>
               <span>
                 {groupsOf(s)} · {levelOf(s.level)}
