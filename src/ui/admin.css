@@ -98,6 +98,10 @@
   height: 100dvh;
   position: sticky;
   top: 0;
+  /* The list scrolls inside the pane. Without this clip a long list (70 students) still adds its
+     full height to the document: the page grows past the main content and the sticky sidebar
+     and pane scroll away with it. */
+  overflow: hidden;
 }
 .ad-pane-head {
   padding: 24px 20px 12px;
@@ -107,6 +111,7 @@
 }
 .ad-pane-list {
   flex-grow: 1;
+  min-height: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -226,6 +231,7 @@
     width: 100%;
     height: auto;
     position: static;
+    overflow: visible;
   }
   .ad-main {
     padding: 16px;
