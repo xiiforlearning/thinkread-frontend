@@ -789,6 +789,8 @@ export class MockAdminApi implements AdminApi {
   readonly features = { teacherChat: true, parentReport: true };
   private names = new Map<string, string>();
   private archived = new Set<string>();
+  /** Demo: words without a lexicon entry; the catch-up «fetches» them. */
+  private lexiconGaps = 16;
   private flagStatus = new Map<string, FlagStatus>(FLAGS.map((f) => [f.id, f.status]));
   private levels = new Map<number, GroupLevel>(GROUPS.map((x) => [x.chatId, x.level]));
   private inactive = new Set<number>();
@@ -1649,6 +1651,16 @@ export class MockAdminApi implements AdminApi {
       await delay(800);
       const summary = await this.ops.weeklySummary('last');
       return { summary, flagged: summary.missed.length, sentTo: [1, 777] };
+    },
+    lexiconGaps: async () => {
+      this.assertOwner();
+      return { lemmas: this.lexiconGaps };
+    },
+    enrichMissing: async () => {
+      this.assertOwner();
+      const queued = this.lexiconGaps;
+      setTimeout(() => (this.lexiconGaps = 0), 3000);
+      return { queued };
     },
   };
 }

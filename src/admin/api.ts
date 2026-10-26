@@ -370,6 +370,10 @@ export interface AdminApi {
     weeklySummary(week: 'this' | 'last'): Promise<WeeklySummary>;
     /** Owner: flag last week's no-shows and send the summary now. */
     runWeeklySummary(): Promise<{ summary: WeeklySummary; flagged: number; sentTo: number[] }>;
+    /** Owner: distinct words of the school without an AI translation / CEFR (no lexicon entry). */
+    lexiconGaps(): Promise<{ lemmas: number }>;
+    /** Owner: enrich those words in the background; poll lexiconGaps() for progress. */
+    enrichMissing(): Promise<{ queued: number }>;
   };
 }
 
@@ -515,5 +519,7 @@ export class HttpAdminApi implements AdminApi {
     runReminders: (kind) => this.call('POST', '/admin/reminders/run', { kind }),
     weeklySummary: (week) => this.call('GET', '/admin/weekly-summary', undefined, { week }),
     runWeeklySummary: () => this.call('POST', '/admin/weekly-summary/run'),
+    lexiconGaps: () => this.call('GET', '/admin/words/lexicon-gaps'),
+    enrichMissing: () => this.call('POST', '/admin/words/enrich-missing'),
   };
 }

@@ -229,6 +229,7 @@ export function SettingsScreen() {
         </div>
       </form>
       <OpsCard />
+      <LexiconCard />
     </Shell>
   );
 }
@@ -338,6 +339,58 @@ function OpsCard() {
         </div>
       ) : null}
       <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('mailingsNote')}</span>
+    </Card>
+  );
+}
+
+/** Words without an AI translation / CEFR (a failed enrichment batch) and the catch-up for them. */
+function LexiconCard() {
+  const t = useT(settingsDict);
+  const api = useAdminApi();
+  const qc = useQueryClient();
+  const gaps = useQuery({ queryKey: ['lexicon-gaps'], queryFn: () => api.ops.lexiconGaps() });
+  const [note, setNote] = useState<string | null>(null);
+  const run = useMutation({
+    mutationFn: () => api.ops.enrichMissing(),
+    onSuccess: (r) => {
+      setNote(t('lexiconStarted', { n: r.queued }));
+      // One model call per 25 words: check back after a while.
+      setTimeout(() => void qc.invalidateQueries({ queryKey: ['lexicon-gaps'] }), 20_000);
+    },
+    onError: (e) => setNote(errorText(e)),
+  });
+  const n = gaps.data?.lemmas;
+  return (
+    <Card desktop title={t('lexicon')} meta={t('lexiconMeta')}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13 }}>
+          {gaps.isLoading
+            ? t('lexiconCounting')
+            : n === 0
+              ? t('lexiconAllGood')
+              : t('lexiconGaps', { n: n ?? 0 })}
+        </span>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="refresh"
+          disabled={!n || run.isPending}
+          loading={run.isPending}
+          onClick={() => run.mutate()}
+        >
+          {t('lexiconRun')}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={gaps.isFetching}
+          onClick={() => void gaps.refetch()}
+        >
+          {t('lexiconRecount')}
+        </Button>
+      </div>
+      {note ? <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{note}</span> : null}
+      <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('lexiconNote')}</span>
     </Card>
   );
 }

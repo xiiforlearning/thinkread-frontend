@@ -57,6 +57,17 @@ export const settingsDict = defineDict({
     sendSummary: 'Отправить сводку недели',
     mailingsNote:
       'Напоминания уходят только тем, у кого норма не выполнена, не чаще раза в день и не в режиме «устал». Сводка идёт владельцу и учителям по их группам и ставит тихий флаг за неделю без отчётов.',
+    lexicon: 'Словарь',
+    lexiconMeta: 'перевод, примеры и CEFR слова получают от AI один раз на всю школу',
+    lexiconCounting: 'Считаем…',
+    lexiconAllGood: 'У всех слов есть перевод и уровень.',
+    lexiconGaps: 'Слов без перевода и уровня: {n}',
+    lexiconRun: 'Дообогатить',
+    lexiconRecount: 'Пересчитать',
+    lexiconStarted:
+      'Запущено для {n} слов — по одному запросу к AI на 25 слов, число обновится через полминуты.',
+    lexiconNote:
+      'Такое бывает, когда партия обогащения не записалась (например, AI вернул одно слово дважды). Кнопка запрашивает недостающие слова заново и проставляет перевод, примеры и уровень всем студентам, у кого они есть.',
     teachers: 'Учителя',
     allGroups: 'все группы',
     noGroupsFound: 'группы не найдены',
@@ -134,6 +145,17 @@ export const settingsDict = defineDict({
     sendSummary: 'Send the weekly summary',
     mailingsNote:
       'Reminders go only to those who have not met the norm, at most once a day and not in “tired” mode. The summary goes to the owner and to teachers for their groups and raises a quiet flag for a week without reports.',
+    lexicon: 'Vocabulary',
+    lexiconMeta: 'translation, examples and CEFR come from the AI once for the whole school',
+    lexiconCounting: 'Counting…',
+    lexiconAllGood: 'Every word has a translation and a level.',
+    lexiconGaps: 'Words without a translation and level: {n}',
+    lexiconRun: 'Enrich now',
+    lexiconRecount: 'Recount',
+    lexiconStarted:
+      'Started for {n} words — one AI call per 25 words, the count refreshes in half a minute.',
+    lexiconNote:
+      'This happens when an enrichment batch was not stored (for example, the AI returned one word twice). The button asks for the missing words again and fills in the translation, examples and level for every student who has them.',
     teachers: 'Teachers',
     allGroups: 'all groups',
     noGroupsFound: 'no groups found',
