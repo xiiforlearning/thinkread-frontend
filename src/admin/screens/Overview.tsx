@@ -123,6 +123,14 @@ function Body({ o }: { o: Overview }) {
           >
             <HealthDot status="good" />
             <HealthDot status="warn" />
+            <span className="tr tr-health" style={{ color: 'var(--ink-3)' }}>
+              <span
+                className="tr-health-dot"
+                aria-hidden="true"
+                style={{ background: 'var(--ink-3)' }}
+              />
+              {t('pendingLegend')}
+            </span>
             <HealthDot status="bad" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -131,7 +139,7 @@ function Body({ o }: { o: Overview }) {
                 key={g.chatId}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '110px minmax(0, 1fr) 84px',
+                  gridTemplateColumns: '110px minmax(0, 1fr) 104px',
                   gap: 12,
                   alignItems: 'center',
                 }}
@@ -149,10 +157,11 @@ function Body({ o }: { o: Overview }) {
                     title: g.title,
                     good: g.good,
                     warn: g.warn,
+                    pending: g.pending,
                     bad: g.bad,
                   })}
                 >
-                  {g.members === 0 ? (
+                  {g.members + g.pending === 0 ? (
                     <span style={{ flexGrow: 1, background: 'var(--line)', borderRadius: 3 }} />
                   ) : null}
                   <span
@@ -174,6 +183,15 @@ function Body({ o }: { o: Overview }) {
                     }}
                   />
                   <span
+                    title={t('pendingN', { n: g.pending })}
+                    style={{
+                      flexGrow: g.pending,
+                      flexBasis: 0,
+                      background: 'var(--ink-3)',
+                      borderRadius: 3,
+                    }}
+                  />
+                  <span
                     title={t('problemN', { n: g.bad })}
                     style={{
                       flexGrow: g.bad,
@@ -188,15 +206,7 @@ function Body({ o }: { o: Overview }) {
                   style={{ fontSize: 12, color: 'var(--ink-2)', textAlign: 'right' }}
                   title={t('registeredPending', { registered: g.members, pending: g.pending })}
                 >
-                  {g.good} · {g.warn} · {g.bad}
-                  {g.pending > 0 ? (
-                    <>
-                      <br />
-                      <span style={{ color: 'var(--warn)' }}>
-                        {t('pendingN', { n: g.pending })}
-                      </span>
-                    </>
-                  ) : null}
+                  {g.good} · {g.warn} · {g.pending} · {g.bad}
                 </span>
               </div>
             ))}
@@ -205,11 +215,9 @@ function Body({ o }: { o: Overview }) {
             {t('totals', {
               good: o.healthTotals.good,
               warn: o.healthTotals.warn,
+              pending: o.stats.pendingStudents,
               bad: o.healthTotals.bad,
             })}
-            {o.stats.pendingStudents > 0
-              ? ` · ${t('pendingTotal', { n: o.stats.pendingStudents })}`
-              : null}
           </span>
         </Card>
 
