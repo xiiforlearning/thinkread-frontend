@@ -1077,6 +1077,7 @@ export class MockAdminApi implements AdminApi {
       .slice(0, 3);
     const stats: Overview['stats'] = {
       activeStudents: 96 - this.archived.size,
+      pendingStudents: 0,
       archivedStudents: 4 + this.archived.size,
       groups: GROUPS.length,
       readingRate: readingPct[offset],
@@ -1098,6 +1099,7 @@ export class MockAdminApi implements AdminApi {
         warn: gr.warn,
         bad: gr.bad,
         members: gr.members,
+        pending: 0,
       })),
       healthTotals: totals,
       history: weeks

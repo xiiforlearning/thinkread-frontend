@@ -82,11 +82,12 @@ function Body({ o }: { o: Overview }) {
         <StatTile
           label={t('activeStudents')}
           value={num(o.stats.activeStudents)}
-          note={t('groupsArchived', {
+          note={t(o.stats.pendingStudents > 0 ? 'groupsPendingArchived' : 'groupsArchived', {
             groups: `${o.stats.groups} ${plural(o.stats.groups, {
               ru: [t('groupOne'), t('groupFew'), t('groupMany')],
               en: [t('groupOne'), t('groupFew')],
             })}`,
+            pending: o.stats.pendingStudents,
             archived: o.stats.archivedStudents,
           })}
         />
@@ -185,8 +186,17 @@ function Body({ o }: { o: Overview }) {
                 <span
                   className="ad-num"
                   style={{ fontSize: 12, color: 'var(--ink-2)', textAlign: 'right' }}
+                  title={t('registeredPending', { registered: g.members, pending: g.pending })}
                 >
                   {g.good} · {g.warn} · {g.bad}
+                  {g.pending > 0 ? (
+                    <>
+                      <br />
+                      <span style={{ color: 'var(--warn)' }}>
+                        {t('pendingN', { n: g.pending })}
+                      </span>
+                    </>
+                  ) : null}
                 </span>
               </div>
             ))}
@@ -197,6 +207,9 @@ function Body({ o }: { o: Overview }) {
               warn: o.healthTotals.warn,
               bad: o.healthTotals.bad,
             })}
+            {o.stats.pendingStudents > 0
+              ? ` · ${t('pendingTotal', { n: o.stats.pendingStudents })}`
+              : null}
           </span>
         </Card>
 

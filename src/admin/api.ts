@@ -120,6 +120,8 @@ export interface Overview {
   generatedAt: string;
   stats: {
     activeStudents: number;
+    /** Imported students who have not opened the Mini App and entered their name yet. */
+    pendingStudents: number;
     archivedStudents: number;
     groups: number;
     readingRate: number;
@@ -136,7 +138,10 @@ export interface Overview {
     good: number;
     warn: number;
     bad: number;
+    /** Registered (ACTIVE) members — the ones the health bar is about. */
     members: number;
+    /** Members still to register. */
+    pending: number;
   }>;
   healthTotals: { good: number; warn: number; bad: number };
   history: Array<{ weekStart: string; reading: number; listening: number; students: number }>;
