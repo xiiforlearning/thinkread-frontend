@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { type Api, HttpApi } from '../api/client';
@@ -16,6 +17,30 @@ import { apiBaseUrl } from '../lib/api-url';
 import { initData, insideTelegram, tg } from '../telegram/webapp';
 
 const TOKEN_KEY = 'thinkread.token';
+
+/**
+ * The student's JWT. Kept in memory first — Telegram's WebView does not always give us a
+ * working sessionStorage — and mirrored to sessionStorage as a best effort for the dashboard
+ * hand-over (`openDashboard`).
+ */
+let tokenInMemory: string | null = null;
+function readToken(): string | null {
+  if (tokenInMemory) return tokenInMemory;
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+function writeToken(token: string | null): void {
+  tokenInMemory = token;
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage unavailable — the in-memory copy serves this page */
+  }
+}
 
 /**
  * Demo mode (in-memory data) only when asked for: `VITE_DEMO=1` at build time, or `?demo=…` in
@@ -61,7 +86,7 @@ export function openDashboard(roles: ApiRole[], demo: boolean): void {
       localStorage.setItem(ADMIN_DEMO_KEY, JSON.stringify('1'));
     } else {
       localStorage.removeItem(ADMIN_DEMO_KEY);
-      const token = sessionStorage.getItem(TOKEN_KEY);
+      const token = readToken();
       if (token) localStorage.setItem(ADMIN_TOKEN_KEY, JSON.stringify(token));
     }
     localStorage.setItem(
@@ -98,13 +123,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
+  // A 401 (expired or lost token) signs in again through Telegram instead of dropping the
+  // token and failing every request after it; one re-login per failure, not a loop.
+  const reauth = useRef(false);
   const api = useMemo<Api>(() => {
     if (demo) return new MockApi({ access: demoAccess() });
-    return new HttpApi(
-      apiBaseUrl(),
-      () => sessionStorage.getItem(TOKEN_KEY),
-      () => sessionStorage.removeItem(TOKEN_KEY),
-    );
+    return new HttpApi(apiBaseUrl(), readToken, () => {
+      if (reauth.current) return;
+      reauth.current = true;
+      writeToken(null);
+      setAttempt((n) => n + 1);
+    });
   }, [demo]);
 
   useEffect(() => {
@@ -118,8 +147,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .webApp(initData())
       .then((res) => {
         if (cancelled) return;
-        if (res.token) sessionStorage.setItem(TOKEN_KEY, res.token);
-        else sessionStorage.removeItem(TOKEN_KEY);
+        writeToken(res.token);
+        reauth.current = false;
         setState({ kind: 'ready', status: res.status, roles: res.roles });
       })
       .catch((e: unknown) => {
