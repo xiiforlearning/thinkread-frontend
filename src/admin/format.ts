@@ -19,6 +19,7 @@ const FLAG_TITLE_KEY: Record<FlagKind, FormatKey> = {
   REPEATED_RETELLING: 'flagRepeatedRetelling',
   STYLE_MISMATCH: 'flagStyleMismatch',
   GENERIC_RETELLING: 'flagGenericRetelling',
+  NO_NEW_WORDS: 'flagNoNewWords',
 };
 
 const FLAG_SHORT_KEY: Record<FlagKind, FormatKey> = {
@@ -30,6 +31,7 @@ const FLAG_SHORT_KEY: Record<FlagKind, FormatKey> = {
   REPEATED_RETELLING: 'shortRepeatedRetelling',
   STYLE_MISMATCH: 'shortStyleMismatch',
   GENERIC_RETELLING: 'shortGenericRetelling',
+  NO_NEW_WORDS: 'shortNoNewWords',
 };
 
 const FLAG_STATUS_KEY: Record<FlagStatus, FormatKey> = {
@@ -124,7 +126,9 @@ export function reportMeta(r: AdminReport): string {
     if (r.listenCount !== null) parts.push(times(r.listenCount));
   }
   const words = Array.isArray(r.wordsAdded) ? r.wordsAdded.length : Number(r.wordsAdded ?? 0);
-  parts.push(`+${wordsCount(words)}`);
+  parts.push(
+    words === 0 && r.noNewWords ? tr(formatDict, 'noNewWordsMark') : `+${wordsCount(words)}`,
+  );
   return parts.join(' · ');
 }
 

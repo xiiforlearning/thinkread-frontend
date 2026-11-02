@@ -26,7 +26,8 @@ export type FlagKind =
   | 'REPEATED_RETELLING'
   | 'FORWARDED'
   | 'SPOT_CHECK_FAILED'
-  | 'NORM_MISSED_WEEK';
+  | 'NORM_MISSED_WEEK'
+  | 'NO_NEW_WORDS';
 export type FlagStatus = 'NEW' | 'REVIEWED' | 'DISMISSED';
 export type WordListScope = 'GROUP' | 'LEVEL' | 'ALL';
 export type WordListStatus = 'ACTIVE' | 'CLOSED';
@@ -85,9 +86,36 @@ export interface AdminReport extends Report {
   isForwarded?: boolean;
 }
 
+/** A statement of the check with the exact quote it rests on (verified against the text). */
+export interface FlagClaim {
+  statement: string;
+  quote: string;
+  previousQuote?: string;
+}
+
+export interface ReportMetrics {
+  words: number;
+  errorsPer100: number;
+  advanced: number;
+}
+
+/** What the card carries besides the reasons: numbers and the quotes behind them. */
+export interface FlagDetails {
+  reasons?: Partial<Record<FlagKind, string>>;
+  claims?: Partial<Record<FlagKind, FlagClaim[]>>;
+  metrics?: ReportMetrics;
+  baseline?: { reports: number; errorsPer100: number; advanced: number };
+  errors?: string[];
+  advancedQuotes?: string[];
+}
+
 export interface FlagView {
   id: string;
+  /** The first signal; `kinds` holds all of them — one card per report. */
   kind: FlagKind;
+  kinds: FlagKind[];
+  reasons: Partial<Record<FlagKind, string>>;
+  details: FlagDetails;
   status: FlagStatus;
   reason: string | null;
   createdAt: string;

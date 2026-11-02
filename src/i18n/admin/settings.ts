@@ -27,6 +27,11 @@ export const settingsDict = defineDict({
     correctToAdvance: 'Верных ответов до новой стадии',
     stage3ToLearned: 'Успехов на стадии 3 до «выучено»',
     normsNote: 'Нормы чтения и аудирования считаются раздельно; один отчёт типа в день.',
+    minWordsPerReport: 'Минимум новых слов в отчёте',
+    maxWordsPerReport: 'Максимум слов за отчёт',
+    maxReportChars: 'Длина отчёта, символов',
+    wordsNote:
+      'Слова берутся только из списка студента и подтверждаются им. 0 в минимуме — отчёт без слов принимается с пометкой; два подряд дают тихий флаг. Длиннее лимита — просим сократить, список слов не считается.',
     remindersAi: 'Напоминания и AI',
     cardsTime: 'Карточки, утром',
     reportsTime: 'Отчёты, вечером',
@@ -116,6 +121,11 @@ export const settingsDict = defineDict({
     correctToAdvance: 'Correct answers to the next stage',
     stage3ToLearned: 'Successes on stage 3 until “learned”',
     normsNote: 'Reading and listening norms are counted separately; one report per type per day.',
+    minWordsPerReport: 'Minimum new words per report',
+    maxWordsPerReport: 'Maximum words per report',
+    maxReportChars: 'Report length, characters',
+    wordsNote:
+      'Words come only from the student’s list and are confirmed by them. A minimum of 0 accepts a report without words with a mark; two in a row raise a quiet flag. Longer than the limit — the student is asked to shorten; the word list is not counted.',
     remindersAi: 'Reminders and AI',
     cardsTime: 'Cards, morning',
     reportsTime: 'Reports, evening',

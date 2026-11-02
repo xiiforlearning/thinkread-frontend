@@ -2,6 +2,7 @@ import { common } from '../i18n/common';
 import type { Lang } from '../i18n/lang';
 import { tr } from '../i18n/t';
 import {
+  type ConfirmWord,
   type AddWordsResult,
   ApiError,
   type CardAnswer,
@@ -78,6 +79,12 @@ export interface Api {
     today(): Promise<Record<ReportType, boolean>>;
     submit(type: ReportType, text: string): Promise<IntakeResult>;
     clarify(draftId: string, text: string): Promise<IntakeResult>;
+    /** The report in progress (CLARIFY or CONFIRM_WORDS) to resume after a reload, or null. */
+    draft(): Promise<IntakeResult | null>;
+    /** Confirm the word list → SAVED; `words` omitted = the extracted list minus duplicates. */
+    confirm(draftId: string, words?: ConfirmWord[]): Promise<IntakeResult>;
+    /** Back to the report: the draft is dropped, nothing was counted. */
+    discard(draftId: string): Promise<void>;
     patch(id: string, patch: ReportPatch): Promise<Report>;
   };
 }
@@ -203,6 +210,12 @@ export class HttpApi implements Api {
     today: () => this.call('GET', '/me/reports/today'),
     submit: (type, text) => this.call('POST', '/me/reports', { type, text }),
     clarify: (draftId, text) => this.call('POST', `/me/reports/${draftId}/clarify`, { text }),
+    draft: () => this.call('GET', '/me/reports/draft'),
+    confirm: (draftId, words) =>
+      this.call('POST', `/me/reports/${draftId}/confirm`, words ? { words } : {}),
+    discard: async (draftId) => {
+      await this.call('POST', `/me/reports/${draftId}/discard`, {});
+    },
     patch: (id, patch) => this.call('PATCH', `/me/reports/${id}`, patch),
   };
 }

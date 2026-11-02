@@ -22,14 +22,21 @@ type StatusFilter = 'NEW' | 'ALL';
 type KindFilter = 'ALL' | FlagKind;
 const KIND_CHIPS: KindFilter[] = [
   'ALL',
-  'PCT_JUMP',
-  'NORM_MISSED_WEEK',
-  'TOO_POLISHED',
-  'FORWARDED',
-  'SPOT_CHECK_FAILED',
+  'GENERIC_RETELLING',
   'REPEATED_RETELLING',
   'STYLE_MISMATCH',
+  'TOO_POLISHED',
+  'PCT_JUMP',
+  'SPOT_CHECK_FAILED',
+  'FORWARDED',
+  'NORM_MISSED_WEEK',
+  'NO_NEW_WORDS',
 ];
+
+/** Every signal of the card: `kinds` when the API sends them, else the single `kind`. */
+function kindsOf(f: Pick<FlagView, 'kind' | 'kinds'>): FlagKind[] {
+  return f.kinds && f.kinds.length > 0 ? f.kinds : [f.kind];
+}
 
 /** 13 · Флаги: inbox pane + the selected flag with its report and the previous ones. */
 export function FlagsScreen() {
@@ -99,7 +106,11 @@ export function FlagsScreen() {
                   : f.reason
                 : flagTitle(f.kind)
             }
-            badge={flagShort(f.kind)}
+            badge={
+              kindsOf(f).length > 1
+                ? `${flagShort(f.kind)} +${kindsOf(f).length - 1}`
+                : flagShort(f.kind)
+            }
             badgeTone="code"
             className={f.status === 'NEW' ? undefined : 'ad-dim'}
           />
@@ -109,6 +120,97 @@ export function FlagsScreen() {
   );
 
   return <Shell pane={pane}>{id ? <FlagDetail id={id} /> : <Empty>{t('pickFlag')}</Empty>}</Shell>;
+}
+
+/** Why the card: every signal with its reason, the verified quotes and the numbers behind it. */
+function Signals({ flag: f }: { flag: FlagView }) {
+  const t = useT(flagsDict);
+  const kinds = kindsOf(f);
+  const reasons = f.reasons ?? {};
+  const d = f.details ?? {};
+  const m = d.metrics;
+  return (
+    <Card desktop title={t('why')} meta={kinds.length > 1 ? t('oneCard') : undefined}>
+      {kinds.map((k) => {
+        const reason = reasons[k] ?? (kinds.length === 1 ? f.reason : null);
+        const claims = d.claims?.[k] ?? [];
+        return (
+          <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Badge tone="bad">{flagShort(k)}</Badge>
+              <strong style={{ fontSize: 14 }}>{flagTitle(k)}</strong>
+            </div>
+            <span style={{ fontSize: 13, lineHeight: '19px' }}>{reason ?? t('noReason')}</span>
+            {claims.map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  padding: '8px 12px',
+                  borderLeft: '3px solid var(--line)',
+                  fontSize: 13,
+                  lineHeight: '19px',
+                }}
+              >
+                {c.statement !== reason ? <span>{c.statement}</span> : null}
+                <span style={{ color: 'var(--ink-2)' }}>
+                  {t('quote')}: «{c.quote}»
+                </span>
+                {c.previousQuote ? (
+                  <span style={{ color: 'var(--ink-2)' }}>
+                    {t('previousQuote')}: «{c.previousQuote}»
+                  </span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+      {m ? (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            fontSize: 12,
+            color: 'var(--ink-2)',
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>{t('numbers')}</span>
+          <span>
+            {t('metricsLine', { words: m.words, errors: m.errorsPer100, advanced: m.advanced })}
+          </span>
+          <span>
+            {d.baseline
+              ? t('baselineLine', { errors: d.baseline.errorsPer100, n: d.baseline.reports })
+              : t('noBaseline')}
+          </span>
+          {d.errors && d.errors.length > 0 ? (
+            <details>
+              <summary style={{ cursor: 'pointer' }}>
+                {t('errorsFound', { n: d.errors.length })}
+              </summary>
+              <span style={{ whiteSpace: 'pre-line' }}>
+                {d.errors.map((e) => `«${e}»`).join('\n')}
+              </span>
+            </details>
+          ) : null}
+          {d.advancedQuotes && d.advancedQuotes.length > 0 ? (
+            <details>
+              <summary style={{ cursor: 'pointer' }}>
+                {t('advancedFound', { n: d.advancedQuotes.length })}
+              </summary>
+              <span style={{ whiteSpace: 'pre-line' }}>
+                {d.advancedQuotes.map((e) => `«${e}»`).join('\n')}
+              </span>
+            </details>
+          ) : null}
+        </div>
+      ) : null}
+    </Card>
+  );
 }
 
 function FlagDetail({ id }: { id: string }) {
@@ -138,9 +240,13 @@ function FlagDetail({ id }: { id: string }) {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Badge tone="code">{f.kind}</Badge>
-          <h2 className="ad-h2">{flagTitle(f.kind)}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {kindsOf(f).map((k) => (
+            <Badge key={k} tone="code">
+              {flagShort(k)}
+            </Badge>
+          ))}
+          <h2 className="ad-h2">{kindsOf(f).length > 1 ? t('signals') : flagTitle(f.kind)}</h2>
         </div>
         <div
           style={{
@@ -187,9 +293,7 @@ function FlagDetail({ id }: { id: string }) {
         {review.error ? <Callout tone="bad">{errorText(review.error)}</Callout> : null}
       </div>
 
-      <Callout tone="bad" title={t('why')}>
-        {f.reason ?? t('noReason')}
-      </Callout>
+      <Signals flag={f} />
 
       <div className="ad-grid ad-grid-2">
         <Card

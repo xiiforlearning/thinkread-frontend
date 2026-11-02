@@ -12,6 +12,7 @@ import type {
   FlagDetail,
   FlagKind,
   FlagStatus,
+  FlagDetails,
   FlagView,
   GroupView,
   Health,
@@ -371,6 +372,7 @@ function reading(d: Date, book: string, pages: number, text: string, words: stri
     listenCount: null,
     unclearParts: null,
     wordsAdded: words.length,
+    noNewWords: false,
     weekStart: isoDay(monday(d)),
     createdAt: d.toISOString(),
     rawText: `прочитал ${pages} страниц ${book}, ${text.toLowerCase()}, слова: ${words.join(', ')}`,
@@ -403,6 +405,7 @@ function listening(
     listenCount: times,
     unclearParts: null,
     wordsAdded: words.length,
+    noNewWords: false,
     weekStart: isoDay(monday(d)),
     createdAt: d.toISOString(),
     rawText:
@@ -682,6 +685,9 @@ interface F {
   reason: string;
   reportIndex: number | null;
   daysAgo: number;
+  /** Further signals on the same report and what the card carries (one card per report). */
+  more?: Array<{ kind: FlagKind; reason: string }>;
+  details?: FlagDetails;
 }
 const FLAGS: F[] = [
   {
@@ -712,7 +718,28 @@ const FLAGS: F[] = [
     reportIndex: 0,
     daysAgo: 4,
     reason:
-      'Пересказ выглядит как аннотация: без личных деталей, сложные конструкции, которых раньше не было. Стилистически сильно выше обычного уровня студента.',
+      'Почти без ошибок: 0.8 на 100 слов при обычных 6.4 для этого студента (порог для уровня 1.0). Выше уровня: «had been lingering», «a fleeting glimpse».',
+    more: [
+      {
+        kind: 'GENERIC_RETELLING',
+        reason:
+          'Пересказ подошёл бы к любой главе: нет имён, событий и сцен, только общие слова о «приключениях и дружбе».',
+      },
+    ],
+    details: {
+      claims: {
+        GENERIC_RETELLING: [
+          {
+            statement: 'Ни одного имени или события из главы.',
+            quote: 'the chapter was about friendship and adventures',
+          },
+        ],
+      },
+      metrics: { words: 124, errorsPer100: 0.8, advanced: 2 },
+      baseline: { reports: 3, errorsPer100: 6.4, advanced: 0 },
+      errors: ['he dont like'],
+      advancedQuotes: ['had been lingering', 'a fleeting glimpse'],
+    },
   },
   {
     id: uid(),
@@ -774,6 +801,9 @@ const SETTINGS: Setting[] = [
   { key: 'norms.listeningPerWeek', def: 3 },
   { key: 'norms.cardsPerDay', def: 5 },
   { key: 'norms.startsOn', def: '2026-10-26' },
+  { key: 'norms.minWordsPerReport', def: 0 },
+  { key: 'norms.maxReportChars', def: 1500 },
+  { key: 'words.maxPerReport', def: 30 },
   { key: 'cards.correctToAdvance', def: 1 },
   { key: 'cards.stage3ToLearned', def: 1 },
   { key: 'reminders.cardsTime', def: '09:00' },
@@ -950,11 +980,17 @@ export class MockAdminApi implements AdminApi {
   private flagView(f: F, withStudent = true): FlagView {
     const report = f.reportIndex === null ? null : (REPORTS[f.student.id]?.[f.reportIndex] ?? null);
     const status = this.flagStatus.get(f.id) ?? f.status;
+    const kinds: FlagKind[] = [f.kind, ...(f.more ?? []).map((m) => m.kind)];
+    const reasons: Partial<Record<FlagKind, string>> = { [f.kind]: f.reason };
+    for (const m of f.more ?? []) reasons[m.kind] = m.reason;
     return {
       id: f.id,
       kind: f.kind,
+      kinds,
+      reasons,
+      details: { ...(f.details ?? {}), reasons },
       status,
-      reason: f.reason,
+      reason: [f.reason, ...(f.more ?? []).map((m) => m.reason)].join('\n'),
       createdAt: daysAgo(f.daysAgo, 21).toISOString(),
       reviewedAt: status === 'NEW' ? null : new Date().toISOString(),
       student: withStudent ? this.row(f.student) : null,

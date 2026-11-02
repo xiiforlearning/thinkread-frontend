@@ -8,6 +8,8 @@ import { stageLabel } from '../lib/labels';
 import { defineDict, tr } from '../i18n/t';
 import type { Api } from './client';
 import {
+  type ConfirmWord,
+  type DraftWord,
   type AccessStatus,
   ApiError,
   type CardAnswer,
@@ -160,7 +162,15 @@ export class MockApi implements Api {
   private profile: Profile;
   private wordsDb: Word[] = [];
   private reportsDb: Report[] = [];
-  private draft: { id: string; type: ReportType; text: string; missing: string[] } | null = null;
+  private draft: {
+    id: string;
+    type: ReportType;
+    text: string;
+    missing: string[];
+    /** CONFIRM_WORDS: the extracted list waits for the student. */
+    words?: DraftWord[];
+    hasList?: boolean;
+  } | null = null;
   private pendingImport: { id: string; items: ImportPreview['items'] } | null = null;
   private spot: SpotCheck | null;
   private teacherList: Recommendation;
@@ -273,6 +283,7 @@ export class MockApi implements Api {
         listenCount: null,
         unclearParts: null,
         wordsAdded: words.length,
+        noNewWords: false,
         createdAt: date.toISOString(),
       });
     const listening = (
@@ -296,6 +307,7 @@ export class MockApi implements Api {
         listenCount: count,
         unclearParts: 'sleep debt',
         wordsAdded: words.length,
+        noNewWords: false,
         createdAt: date.toISOString(),
       });
 
@@ -429,18 +441,55 @@ export class MockApi implements Api {
     return w;
   }
 
-  private saveReport(type: ReportType, text: string): IntakeResult {
+  /** The student's explicit list ("слова: a — b, c") as the confirmation screen shows it. */
+  private extractWords(text: string): DraftWord[] {
+    const seen = new Set<string>();
+    const out: DraftWord[] = [];
+    for (const raw of (
+      text.match(/(?:новые слова|new words|слова|words)\s*:\s*([^\n]+)/i)?.[1] ?? ''
+    ).split(/[,;]/)) {
+      const [w, ...rest] = raw.split(/\s*[—–-]\s*/);
+      const word = w.trim();
+      if (!word || seen.has(lemma(word))) continue;
+      seen.add(lemma(word));
+      out.push({
+        word,
+        translation: rest.join(' ').trim() || null,
+        duplicate: this.wordsDb.some((x) => lemma(x.word) === lemma(word)),
+      });
+    }
+    return out;
+  }
+
+  private toConfirm(type: ReportType, text: string): IntakeResult {
+    const words = this.extractWords(text);
+    this.draft = { id: uid(), type, text, missing: [], words, hasList: words.length > 0 };
+    return {
+      status: 'CONFIRM_WORDS',
+      draftId: this.draft.id,
+      type,
+      hasList: words.length > 0,
+      words,
+      dropped: 0,
+      minWords: 0,
+      maxWords: 30,
+    };
+  }
+
+  private saveReport(type: ReportType, text: string, chosen: ConfirmWord[]): IntakeResult {
     const n = this.now();
-    const words = (text.match(/(?:слова|words)\s*:\s*([^\n]+)/i)?.[1] ?? '')
-      .split(/[,;]/)
-      .map((s) => s.split(/[—–-]/)[0].trim())
-      .filter(Boolean);
+    const words = chosen.map((w) => w.word);
     const addedWords: string[] = [];
-    for (const w of words) {
-      const dup = this.wordsDb.some((x) => lemma(x.word) === lemma(w));
+    for (const w of chosen) {
+      const dup = this.wordsDb.some((x) => lemma(x.word) === lemma(w.word));
       if (!dup) {
-        this.enrich(w, null, type === 'READING' ? 'READING' : 'PODCAST', 'NORMAL');
-        addedWords.push(w);
+        this.enrich(
+          w.word,
+          w.translation ?? null,
+          type === 'READING' ? 'READING' : 'PODCAST',
+          'NORMAL',
+        );
+        addedWords.push(w.word);
       }
     }
     const pages = Number(text.match(/(\d+)\s*(стр|page)/i)?.[1] ?? 0) || null;
@@ -461,6 +510,7 @@ export class MockApi implements Api {
       listenCount: type === 'LISTENING' ? Number(text.match(/(\d+)\s*раз/i)?.[1] ?? 3) : null,
       unclearParts: null,
       wordsAdded: addedWords.length,
+      noNewWords: chosen.length === 0,
       weekStart: isoDay(startOfWeek(n)),
       createdAt: n.toISOString(),
     };
@@ -979,15 +1029,49 @@ export class MockApi implements Api {
           };
         }
       }
-      return this.saveReport(type, text);
+      return this.toConfirm(type, text);
     },
     clarify: async (draftId, text) => {
       await delay(this.latency + 900);
-      if (!this.draft || this.draft.id !== draftId)
+      if (!this.draft || this.draft.id !== draftId || this.draft.words)
         throw new ApiError('305002', 'Черновик не найден — начни отчёт заново', 404);
       const d = this.draft;
+      return this.toConfirm(d.type, `${d.text}\n${text}`);
+    },
+    draft: async () => {
+      await this.tick();
+      const d = this.draft;
+      if (!d) return null;
+      if (d.words)
+        return {
+          status: 'CONFIRM_WORDS',
+          draftId: d.id,
+          type: d.type,
+          hasList: d.hasList ?? false,
+          words: d.words,
+          dropped: 0,
+          minWords: 0,
+          maxWords: 30,
+        };
+      return {
+        status: 'CLARIFY',
+        draftId: d.id,
+        missingFields: d.missing,
+        question: tr(mockCards, 'clarify'),
+      };
+    },
+    confirm: async (draftId, words) => {
+      await delay(this.latency + 400);
+      const d = this.draft;
+      if (!d || d.id !== draftId || !d.words)
+        throw new ApiError('305002', 'Черновик не найден — начни отчёт заново', 404);
+      const chosen = words ?? d.words.filter((w) => !w.duplicate);
       this.draft = null;
-      return this.saveReport(d.type, `${d.text}\n${text}`);
+      return this.saveReport(d.type, d.text, chosen);
+    },
+    discard: async (draftId) => {
+      await this.tick();
+      if (this.draft?.id === draftId) this.draft = null;
     },
     patch: async (id, patch) => {
       await this.tick();

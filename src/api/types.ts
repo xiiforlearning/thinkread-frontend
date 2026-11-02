@@ -189,6 +189,8 @@ export interface Report {
   unclearParts: string | null;
   /** How many new words this report put into the dictionary (`reports.words_added`). */
   wordsAdded: number;
+  /** Confirmed with an empty word list — "без новых слов". */
+  noNewWords: boolean;
   weekStart: string;
   createdAt: string;
 }
@@ -203,8 +205,38 @@ export interface ReportPatch {
   listenCount?: number;
 }
 
+/** One line of the word list on the confirmation screen. */
+export interface DraftWord {
+  word: string;
+  translation: string | null;
+  /** Already in the dictionary — shown, not added. */
+  duplicate: boolean;
+}
+
+/** A word as the student leaves it on the confirmation screen. */
+export interface ConfirmWord {
+  word: string;
+  translation?: string | null;
+}
+
 export type IntakeResult =
   | { status: 'CLARIFY'; draftId: string; missingFields: string[]; question: string }
+  | {
+      /**
+       * The fields are complete; the report is saved and counted only after the student confirms
+       * the word list (customer decision 02.11.2026). `hasList` = the student wrote an explicit
+       * list; false = the screen asks "any new words?".
+       */
+      status: 'CONFIRM_WORDS';
+      draftId: string;
+      type: ReportType;
+      hasList: boolean;
+      words: DraftWord[];
+      /** Words beyond the per-report cap that were left out. */
+      dropped: number;
+      minWords: number;
+      maxWords: number;
+    }
   | {
       status: 'SAVED';
       report: Report;
@@ -252,6 +284,8 @@ export const ERR = {
   NOT_FOUND: '002',
   DAILY_LIMIT: '260',
   NAME_INVALID: '261',
+  WORDS_REQUIRED: '262',
+  REPORT_TOO_LONG: '263',
   IMPORT_EXPIRED: '258',
   AI_UNAVAILABLE: '310',
   AI_RATE_LIMITED: '311',

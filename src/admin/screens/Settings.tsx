@@ -171,6 +171,20 @@ export function SettingsScreen() {
               {field('cards.stage3ToLearned', t('stage3ToLearned'))}
             </div>
             <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('normsNote')}</span>
+            <div
+              className="ad-form"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                gap: 12,
+                alignItems: 'end',
+              }}
+            >
+              {field('norms.minWordsPerReport', t('minWordsPerReport'))}
+              {field('words.maxPerReport', t('maxWordsPerReport'))}
+              {field('norms.maxReportChars', t('maxReportChars'))}
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('wordsNote')}</span>
           </Card>
 
           <Card desktop title={t('remindersAi')}>

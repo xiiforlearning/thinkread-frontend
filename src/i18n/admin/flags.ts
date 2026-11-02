@@ -24,6 +24,16 @@ export const flagsDict = defineDict({
     noPrevious: 'Предыдущих отчётов этого типа нет.',
     footer:
       'Ваши отметки «проверено» и «ложная тревога» помогают настроить проверку. Финальный барьер — не алгоритм: флаг даёт повод спросить студента лично.',
+    signals: 'Сигналы',
+    quote: 'Цитата',
+    previousQuote: 'В прошлом отчёте',
+    numbers: 'Цифры',
+    metricsLine: '{words} слов · ошибок на 100 слов: {errors} · выше уровня: {advanced}',
+    baselineLine: 'Обычно у студента: {errors} ошибок на 100 слов (по {n} отчётам)',
+    noBaseline: 'Базы для сравнения стиля ещё нет: нужно 3 связных отчёта этого типа',
+    errorsFound: 'Найденные ошибки ({n})',
+    advancedFound: 'Выше уровня ({n})',
+    oneCard: 'Одна карточка на отчёт: все сигналы по нему собраны здесь.',
   },
   en: {
     title: 'Flags · inbox',
@@ -48,5 +58,15 @@ export const flagsDict = defineDict({
     noPrevious: 'No previous reports of this type.',
     footer:
       'Your “reviewed” and “false alarm” marks help tune the check. The final barrier is not the algorithm: a flag is a reason to ask the student in person.',
+    signals: 'Signals',
+    quote: 'Quote',
+    previousQuote: 'In the earlier report',
+    numbers: 'Numbers',
+    metricsLine: '{words} words · errors per 100 words: {errors} · above level: {advanced}',
+    baselineLine: 'Usually for this student: {errors} errors per 100 words (over {n} reports)',
+    noBaseline: 'No baseline for style yet: three connected reports of this type are needed',
+    errorsFound: 'Errors found ({n})',
+    advancedFound: 'Above level ({n})',
+    oneCard: 'One card per report: every signal on it is collected here.',
   },
 });

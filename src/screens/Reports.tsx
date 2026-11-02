@@ -8,7 +8,11 @@ import { fmtDay, fmtWeek, words } from '../lib/dates';
 import { Button, Cell, ListGroup, NormCell, SegmentedControl } from '../ui/components';
 
 function subtitle(r: Report): string {
-  const w = r.wordsAdded ? ` · +${words(r.wordsAdded)}` : '';
+  const w = r.wordsAdded
+    ? ` · +${words(r.wordsAdded)}`
+    : r.noNewWords
+      ? ` · ${tr(reportsDict, 'noNewWords')}`
+      : '';
   if (r.type === 'READING')
     return `${tr(reportsDict, 'reading')}${r.pages ? ` · ${tr(reportsDict, 'pages', { n: r.pages })}` : ''}${w}`;
   const pct =
