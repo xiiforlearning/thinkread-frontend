@@ -24,12 +24,38 @@
       </p>
     </div>
     <script>
+      // Telegram's WebView may keep this HTML from before a deploy, when its hashed chunk is
+      // gone from the server: reload once with a cache-busting query, keeping the route hash.
+      function reloadFresh() {
+        try {
+          if (sessionStorage.getItem('tr.reloaded')) return false;
+          sessionStorage.setItem('tr.reloaded', '1');
+        } catch (err) {
+          /* storage may be blocked — then only the message below */
+        }
+        var u = new URL(location.href);
+        u.searchParams.set('v', String(Date.now()));
+        location.replace(u.toString());
+        return true;
+      }
       window.addEventListener('error', function (e) {
+        var src = e.target && e.target.src;
+        if (src && String(src).indexOf('/assets/') !== -1 && reloadFresh()) return;
         var boot = document.getElementById('boot');
         if (!boot) return;
-        var what = e.message || (e.target && e.target.src ? 'не загрузился ' + e.target.src : 'ошибка');
+        var what = e.message || (src ? 'не загрузился ' + src : 'ошибка');
         boot.textContent = 'ThinkRead не запустился: ' + what + '. Закройте и откройте приложение заново; если повторяется, пришлите этот текст.';
       }, true);
+      window.addEventListener('vite:preloadError', function (e) {
+        if (reloadFresh()) e.preventDefault();
+      });
+      window.addEventListener('load', function () {
+        try {
+          sessionStorage.removeItem('tr.reloaded');
+        } catch (err) {
+          /* ignore */
+        }
+      });
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
