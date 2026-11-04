@@ -85,7 +85,10 @@ function parseExtra(text: string): ConfirmWord[] {
   for (const raw of text.split(/[\n,;]+/)) {
     const line = raw.replace(/^\s*\d+[.)]\s*/, '').trim();
     if (!line) continue;
-    const [w, ...rest] = line.split(/\s+[—–-]\s+|\s*[—–]\s*|\s*[:=]\s*/);
+    const [w, ...rest] = line
+      // "convince убеждать": a space before the Cyrillic translation counts as the dash.
+      .replace(/^([A-Za-z][A-Za-z'’ -]{0,40}?)\s+(?=\p{Script=Cyrillic})/u, '$1 — ')
+      .split(/\s+[—–-]\s+|\s*[—–]\s*|\s*[:=]\s*/);
     const word = w.trim();
     if (!/^[A-Za-z][A-Za-z'’ -]*$/.test(word)) continue;
     out.push({ word, translation: rest.join(' ').trim() || null });

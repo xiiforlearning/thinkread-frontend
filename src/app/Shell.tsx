@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { common } from '../i18n/common';
 import { tr } from '../i18n/t';
-import { ApiError } from '../api/types';
+import { ApiError, ERR } from '../api/types';
 import { insideTelegram } from '../telegram/webapp';
 import {
   Badge,
@@ -79,8 +79,28 @@ export function Loading({ text }: { text?: string }) {
   );
 }
 
+/** A known API error code → a sentence the student can act on; unknown ones keep their code. */
+const ERROR_KEY: Partial<Record<string, keyof typeof common.ru>> = {
+  [ERR.PARSE_EMPTY]: 'errParseEmpty',
+  [ERR.DAILY_LIMIT]: 'errDailyLimit',
+  [ERR.WORDS_REQUIRED]: 'errWordsRequired',
+  [ERR.REPORT_TOO_LONG]: 'errTooLong',
+  [ERR.IMPORT_EXPIRED]: 'errImportExpired',
+  [ERR.NOT_FOUND]: 'errNotFound',
+  [ERR.AI_UNAVAILABLE]: 'errAi',
+  [ERR.AI_RATE_LIMITED]: 'errAi',
+  [ERR.TOO_MANY_REQUESTS]: 'errTooMany',
+};
+
 export function errorText(e: unknown): string {
-  if (e instanceof ApiError) return e.message;
+  if (e instanceof ApiError) {
+    const key = ERROR_KEY[e.errorCode];
+    if (key) return tr(common, key);
+    // The API's own message is "AppError [304254]" — not for a student's eyes.
+    return /^AppError \[/.test(e.message) || !e.message
+      ? tr(common, 'errWithCode', { code: e.code })
+      : e.message;
+  }
   if (e instanceof Error) return e.message;
   return tr(common, 'somethingWrong');
 }

@@ -282,6 +282,7 @@ export class ApiError extends Error {
 /** Error codes (last three digits of `{level}{service}{error}`) the UI reacts to. */
 export const ERR = {
   NOT_FOUND: '002',
+  PARSE_EMPTY: '254',
   DAILY_LIMIT: '260',
   NAME_INVALID: '261',
   WORDS_REQUIRED: '262',
