@@ -754,6 +754,8 @@ function WordsTable({
             <span>{w.cefr ?? '—'}</span>
             <span>{w.status === 'LEARNED' ? '—' : t('stageOf', { stage: w.stage })}</span>
             <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('editWordHint')}</span>
+            {/* Two text fields need a submit button for Enter to submit the form. */}
+            <button type="submit" style={{ display: 'none' }} aria-hidden="true" />
             <span style={{ display: 'flex', gap: 2 }}>
               <IconButton
                 icon="check"
