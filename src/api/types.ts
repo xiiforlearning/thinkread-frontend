@@ -41,9 +41,21 @@ export interface Profile {
   language: 'ru' | 'en' | null;
 }
 
+/** One submission window of the week (N1): Mon–Tue, Wed–Thu, Fri–Sun. */
+export interface Slot {
+  slot: number;
+  /** First and last local day, `YYYY-MM-DD`. */
+  from: string;
+  to: string;
+  state: 'done' | 'open' | 'missed' | 'upcoming';
+}
+
 export interface NormPart {
+  /** Windows filled, not reports handed in: two reports in one window count once. */
   done: number;
   norm: number;
+  /** Absent in the dashboard's calendar, present in the Mini App's week. */
+  slots?: Slot[];
 }
 
 export interface Week {
@@ -173,7 +185,15 @@ export interface ImportPreview {
 
 export type AddWordsResult =
   | ({ preview: true } & ImportPreview)
-  | { preview: false; added: Word[]; alreadyHad: Word[]; alreadyLearned: Word[] };
+  | {
+      preview: false;
+      added: Word[];
+      alreadyHad: Word[];
+      alreadyLearned: Word[];
+      /** Words left out by the daily cap (`dailyMax` per local day). */
+      droppedDaily?: number;
+      dailyMax?: number;
+    };
 
 export interface Report {
   id: string;
@@ -241,8 +261,11 @@ export type IntakeResult =
       status: 'SAVED';
       report: Report;
       weekProgress: Week;
-      /** The words of the report: new ones (now in the dictionary) and the ones the student already had. */
-      words: { added: string[]; alreadyHad: string[] };
+      /** The words of the report: new ones (now in the dictionary), the ones the student already had, and how many the daily cap left out. */
+      words: { added: string[]; alreadyHad: string[]; droppedDaily: number };
+      /** The window the report fell into; `slotClosed` = it was already filled, no new slot opened. */
+      slot: number | null;
+      slotClosed: boolean;
     };
 
 export interface Recommendation {

@@ -8,6 +8,8 @@ import { stageLabel } from '../lib/labels';
 import { defineDict, tr } from '../i18n/t';
 import type { Api } from './client';
 import {
+  type NormPart,
+  type Slot,
   type ConfirmWord,
   type DraftWord,
   type AccessStatus,
@@ -403,17 +405,45 @@ export class MockApi implements Api {
     if (this.latency) await delay(this.latency);
   }
 
+  /** 1 = Mon–Tue, 2 = Wed–Thu, 3 = Fri–Sun — the submission window of a date (N1). */
+  private slotOf(d: Date): number {
+    const iso = ((d.getDay() + 6) % 7) + 1;
+    return iso <= 2 ? 1 : iso <= 4 ? 2 : 3;
+  }
+
   private weekOf(start: Date): Week {
     const end = new Date(start.getTime() + 7 * DAY);
     const inWeek = this.reportsDb.filter((r) => {
       const t = new Date(r.createdAt).getTime();
       return t >= start.getTime() && t < end.getTime();
     });
-    return {
-      weekStart: isoDay(start),
-      reading: { done: inWeek.filter((r) => r.type === 'READING').length, norm: 3 },
-      listening: { done: inWeek.filter((r) => r.type === 'LISTENING').length, norm: 3 },
+    const now = this.now();
+    const today = isoDay(now);
+    const part = (type: ReportType): NormPart => {
+      const filled = new Set(
+        inWeek.filter((r) => r.type === type).map((r) => this.slotOf(new Date(r.createdAt))),
+      );
+      const windows: Array<[number, number]> = [
+        [0, 1],
+        [2, 3],
+        [4, 6],
+      ];
+      const slots: Slot[] = windows.map(([a, b], i) => {
+        const from = isoDay(new Date(start.getTime() + a * DAY));
+        const to = isoDay(new Date(start.getTime() + b * DAY));
+        const slot = i + 1;
+        const state: Slot['state'] = filled.has(slot)
+          ? 'done'
+          : today > to
+            ? 'missed'
+            : today < from
+              ? 'upcoming'
+              : 'open';
+        return { slot, from, to, state };
+      });
+      return { done: filled.size, norm: 3, slots };
     };
+    return { weekStart: isoDay(start), reading: part('READING'), listening: part('LISTENING') };
   }
 
   private enrich(
@@ -478,6 +508,11 @@ export class MockApi implements Api {
 
   private saveReport(type: ReportType, text: string, chosen: ConfirmWord[]): IntakeResult {
     const n = this.now();
+    const before = this.weekOf(startOfWeek(n));
+    const slot = this.slotOf(n);
+    const slotClosed = ((type === 'READING' ? before.reading : before.listening).slots ?? []).some(
+      (s) => s.slot === slot && s.state === 'done',
+    );
     const words = chosen.map((w) => w.word);
     const addedWords: string[] = [];
     for (const w of chosen) {
@@ -519,7 +554,13 @@ export class MockApi implements Api {
       status: 'SAVED',
       report,
       weekProgress: this.weekOf(startOfWeek(n)),
-      words: { added: addedWords, alreadyHad: words.filter((x) => !addedWords.includes(x)) },
+      words: {
+        added: addedWords,
+        alreadyHad: words.filter((x) => !addedWords.includes(x)),
+        droppedDaily: 0,
+      },
+      slot,
+      slotClosed,
     };
   }
 

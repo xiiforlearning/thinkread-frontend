@@ -21,6 +21,7 @@ export const addWordsDict = defineDict({
     newWords: 'Новые слова',
     translationByAi: 'перевод подберёт AI',
     alreadyHave: 'уже есть',
+    droppedDaily: 'Лимит {max} слов в день: {n} не добавлены, вернись к ним завтра.',
     cancel: 'Отмена',
     addedTitle: 'Добавлено {words}',
     addedText:
@@ -47,6 +48,7 @@ export const addWordsDict = defineDict({
     newWords: 'New words',
     translationByAi: 'AI will add the translation',
     alreadyHave: 'already have',
+    droppedDaily: 'Daily cap of {max} words: {n} were not added, come back to them tomorrow.',
     cancel: 'Cancel',
     addedTitle: 'Added {words}',
     addedText:

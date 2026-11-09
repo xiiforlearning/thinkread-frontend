@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import type { Report, Week } from '../api/types';
+import type { Report, Slot, Week } from '../api/types';
 import { useProgress, useReports } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
 import { reportsDict } from '../i18n/screens/reports';
 import { tr, useT } from '../i18n/t';
 import { fmtDay, fmtWeek, words } from '../lib/dates';
-import { Button, Cell, ListGroup, NormCell, SegmentedControl } from '../ui/components';
+import { Badge, Button, Cell, ListGroup, NormCell, SegmentedControl } from '../ui/components';
 
 function subtitle(r: Report): string {
   const w = r.wordsAdded
@@ -23,6 +23,42 @@ function subtitle(r: Report): string {
     ? ` · ${tr(reportsDict, r.listenCount === 1 ? 'timesOne' : 'timesOther', { n: r.listenCount })}`
     : '';
   return `${tr(reportsDict, 'listening')}${pct ? ` · ${pct}` : ''}${cnt}${w}`;
+}
+
+/** "Mon–Tue" of one window, in the UI locale, from its local days. */
+function slotDays(s: Slot): string {
+  const day = (d: string) =>
+    new Date(`${d}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' });
+  return s.from === s.to ? day(s.from) : `${day(s.from)}–${day(s.to)}`;
+}
+
+const SLOT_TONE: Record<Slot['state'], 'good' | 'brand' | 'bad' | 'neutral'> = {
+  done: 'good',
+  open: 'brand',
+  missed: 'bad',
+  upcoming: 'neutral',
+};
+
+/** The three submission windows of a type (N1): filled, open now, burned or still ahead. */
+function SlotRow({ label, slots }: { label: string; slots: Slot[] }) {
+  const t = useT(reportsDict);
+  const stateKey = {
+    done: 'slotDone',
+    open: 'slotOpen',
+    missed: 'slotMissed',
+    upcoming: 'slotUpcoming',
+  } as const;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, color: 'var(--ink-2)', minWidth: 72 }}>{label}</span>
+      {slots.map((s) => (
+        <Badge key={s.slot} tone={SLOT_TONE[s.state]} title={t(stateKey[s.state])}>
+          {slotDays(s)}
+          {s.state === 'done' ? ' ✓' : s.state === 'missed' ? ' ✕' : ''}
+        </Badge>
+      ))}
+    </div>
+  );
 }
 
 function WeekGroup({
@@ -65,6 +101,15 @@ function WeekGroup({
           {t('listening')} <NormCell value={l} max={week?.listening.norm ?? 3} />
         </span>
       </div>
+      {week && week.reading.slots?.length ? (
+        <div
+          className="tr tr-cell tr-cell-static"
+          style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}
+        >
+          <SlotRow label={t('reading')} slots={week.reading.slots ?? []} />
+          <SlotRow label={t('listening')} slots={week.listening.slots ?? []} />
+        </div>
+      ) : null}
       {reports.map((rep) =>
         rep.type === 'READING' ? (
           <Cell
@@ -109,10 +154,10 @@ export function ReportsScreen() {
   const hasThisWeek = groups.some(([k]) => k === thisWeekKey);
   const footer = thisWeek
     ? thisWeek.listening.done === 0
-      ? t('noListeningYet')
+      ? `${t('noListeningYet')} ${t('windowsHint')}`
       : thisWeek.reading.done === 0
-        ? t('noReadingYet')
-        : undefined
+        ? `${t('noReadingYet')} ${t('windowsHint')}`
+        : t('windowsHint')
     : undefined;
 
   return (

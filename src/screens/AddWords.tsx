@@ -13,7 +13,7 @@ import { Button, Callout, Card, CheckRow, ListGroup, MainButton, TextArea } from
 type Step =
   | { kind: 'input' }
   | { kind: 'preview'; preview: ImportPreview; excluded: Set<string> }
-  | { kind: 'done'; added: Word[] };
+  | { kind: 'done'; added: Word[]; droppedDaily?: number; dailyMax?: number };
 
 /**
  * 05 · Добавить слова — free text or a .txt/.csv file → preview with checkboxes
@@ -41,7 +41,7 @@ export function AddWordsScreen() {
     onSuccess: (r) => {
       haptic('success');
       invalidate();
-      setStep({ kind: 'done', added: r.words });
+      setStep({ kind: 'done', added: r.words, droppedDaily: r.droppedDaily, dailyMax: r.dailyMax });
     },
     onError: () => haptic('error'),
   });
@@ -176,6 +176,11 @@ export function AddWordsScreen() {
           >
             {t('addedText')}
           </Callout>
+          {step.droppedDaily ? (
+            <Callout tone="warn">
+              {t('droppedDaily', { n: step.droppedDaily, max: step.dailyMax ?? 30 })}
+            </Callout>
+          ) : null}
           <Button variant="secondary" size="md" block icon="cards" to="/cards">
             {t('reviewNow')}
           </Button>

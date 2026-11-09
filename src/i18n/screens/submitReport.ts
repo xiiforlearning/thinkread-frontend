@@ -80,6 +80,12 @@ export const submitReportDict = defineDict({
     tooLongTitle: 'Слишком длинно',
     tooLongBody: 'Сократи текст до {max} символов (сейчас {got}). Список слов в лимит не входит.',
     noNewWordsMark: 'Засчитано без новых слов',
+    slotClosedTitle: 'Это окно уже закрыто',
+    slotClosedBody:
+      'В этом окне отчёт уже был. Этот сохранён, слова добавлены, но новый слот недели он не открывает. Следующее окно: {next}.',
+    slotClosedNoNext:
+      'В этом окне отчёт уже был. Этот сохранён, слова добавлены, но новый слот недели он не открывает.',
+    droppedDaily: 'Лимит {max} слов в день: {n} не добавлены, вернись к ним завтра.',
     translationByAi: 'перевод подберёт AI',
     alreadyHave: 'уже есть',
   },
@@ -162,6 +168,12 @@ export const submitReportDict = defineDict({
     tooLongTitle: 'Too long',
     tooLongBody: 'Shorten the text to {max} characters (now {got}). The word list does not count.',
     noNewWordsMark: 'Counted without new words',
+    slotClosedTitle: 'This window is already closed',
+    slotClosedBody:
+      'There was already a report in this window. This one is saved and the words are added, but it opens no new slot this week. Next window: {next}.',
+    slotClosedNoNext:
+      'There was already a report in this window. This one is saved and the words are added, but it opens no new slot this week.',
+    droppedDaily: 'Daily cap of {max} words: {n} were not added, come back to them tomorrow.',
     translationByAi: 'AI will add the translation',
     alreadyHave: 'already have',
   },

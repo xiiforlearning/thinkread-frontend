@@ -60,7 +60,10 @@ export interface Api {
     one(id: string): Promise<Word>;
     add(words: Array<{ word: string; translation?: string | null }>): Promise<AddWordsResult>;
     importText(text: string): Promise<ImportPreview>;
-    confirmImport(id: string, excludeWords: string[]): Promise<{ added: number; words: Word[] }>;
+    confirmImport(
+      id: string,
+      excludeWords: string[],
+    ): Promise<{ added: number; words: Word[]; droppedDaily?: number; dailyMax?: number }>;
     cancelImport(id: string): Promise<void>;
     patch(id: string, patch: { translation?: string; status?: WordStatus }): Promise<Word>;
     priority(id: string, priority: WordPriority): Promise<Word>;

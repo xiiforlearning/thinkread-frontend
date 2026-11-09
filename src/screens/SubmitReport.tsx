@@ -595,6 +595,11 @@ function ResultView({
   const head = listening
     ? t('headListening', { done: w.listening.done, norm: w.listening.norm, plus })
     : t('headReading', { done: w.reading.done, norm: w.reading.norm, plus });
+  const part = listening ? w.listening : w.reading;
+  const nextOpen = part.slots?.find((s) => s.state === 'upcoming');
+  const nextLabel = nextOpen
+    ? `${new Date(`${nextOpen.from}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' })}–${new Date(`${nextOpen.to}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' })}`
+    : null;
   /** What the field shows: the student's draft once touched, else the parsed value. */
   const shown = (k: keyof ReportPatch, parsed: string | number | null): string =>
     edit[k] ?? (parsed === null ? '' : String(parsed));
@@ -603,6 +608,16 @@ function ResultView({
       <Callout tone="good" icon="check" title={head}>
         {t('resultBody')}
       </Callout>
+      {result.slotClosed ? (
+        <Callout tone="warn" title={t('slotClosedTitle')}>
+          {nextLabel ? t('slotClosedBody', { next: nextLabel }) : t('slotClosedNoNext')}
+        </Callout>
+      ) : null}
+      {result.words.droppedDaily > 0 ? (
+        <Callout tone="warn">
+          {t('droppedDaily', { n: result.words.droppedDaily, max: 30 })}
+        </Callout>
+      ) : null}
       <Card title={t('resultCard')}>
         <TextField
           label={listening ? t('source') : t('book')}
