@@ -14,6 +14,7 @@ import type {
   FlagStatus,
   FlagDetails,
   FlagView,
+  GroupDetail,
   GroupView,
   Health,
   MembershipCheck,
@@ -852,6 +853,10 @@ export class MockAdminApi implements AdminApi {
   private lexiconGaps = 16;
   private flagStatus = new Map<string, FlagStatus>(FLAGS.map((f) => [f.id, f.status]));
   private levels = new Map<number, GroupLevel>(GROUPS.map((x) => [x.chatId, x.level]));
+  /** D12: the owner's names for groups. */
+  private groupNames = new Map<number, string>();
+  /** W5: words the teacher removed in this demo run. */
+  private removedWords = new Set<string>();
   private inactive = new Set<number>();
   private overrides = new Map<string, { value: unknown; updatedAt: string }>();
   private staffRows: StaffMember[] = STAFF.map((s) => ({ ...s }));
@@ -1343,7 +1348,47 @@ export class MockAdminApi implements AdminApi {
     words: async (id) => {
       await delay();
       this.find(id);
-      return (REPORTS[id] ?? []).flatMap((r) => wordsOf(r));
+      return (REPORTS[id] ?? [])
+        .flatMap((r) => wordsOf(r))
+        .filter((w) => !this.removedWords.has(w.id));
+    },
+    removeWord: async (id, wordId) => {
+      await delay();
+      this.find(id);
+      const w = (REPORTS[id] ?? []).flatMap((r) => wordsOf(r)).find((x) => x.id === wordId);
+      if (!w) throw new ApiError('304002', 'Слово не найдено.', 404);
+      this.removedWords.add(wordId);
+      return { ...w, status: 'REMOVED' };
+    },
+    exportWords: async (id, format) => {
+      await delay();
+      const s = this.find(id);
+      const rows = (REPORTS[id] ?? [])
+        .flatMap((r) => wordsOf(r))
+        .filter((w) => !this.removedWords.has(w.id));
+      const esc = (v: string | null): string => `"${(v ?? '').replace(/"/g, '""')}"`;
+      const content =
+        format === 'txt'
+          ? rows.map((w) => (w.translation ? `${w.word} — ${w.translation}` : w.word)).join('\n')
+          : [
+              'word;translation;example;cefr;status;stage;source;added',
+              ...rows.map((w) =>
+                [
+                  esc(w.word),
+                  esc(w.translation),
+                  esc(w.example),
+                  esc(w.cefr),
+                  esc(w.status),
+                  String(w.stage),
+                  esc(w.source),
+                  w.createdAt.slice(0, 10),
+                ].join(';'),
+              ),
+            ].join('\n');
+      return {
+        filename: `thinkread-words-${s.name.replace(/\s+/g, '_')}-${isoDay(new Date())}.${format}`,
+        content: `${content}\n`,
+      };
     },
     rename: async (id, displayName) => {
       this.assertOwner();
@@ -1412,9 +1457,11 @@ export class MockAdminApi implements AdminApi {
       '-1005': [0.6, 0.52],
       '-1006': [0.57, 0.45],
     }[String(gr.chatId)] ?? [0.5, 0.4];
+    const own = this.groupNames.get(gr.chatId);
     return {
       chatId: gr.chatId,
-      title: gr.title,
+      title: own || gr.title,
+      telegramTitle: own ? gr.title : null,
       level: this.levels.get(gr.chatId) ?? gr.level,
       isActive: !this.inactive.has(gr.chatId),
       members: gr.members,
@@ -1429,6 +1476,91 @@ export class MockAdminApi implements AdminApi {
     list: async () => {
       await delay();
       return GROUPS.filter((gr) => !this.inactive.has(gr.chatId)).map((gr) => this.groupView(gr));
+    },
+    one: async (chatId) => {
+      await delay();
+      const gr = GROUPS.find((x) => x.chatId === chatId);
+      if (!gr || this.inactive.has(chatId)) throw new ApiError('202002', 'Группа не найдена.', 404);
+      const norms = this.norms;
+      const mine = STUDENTS.filter((s) => s.group.chatId === chatId && !this.archived.has(s.id));
+      const rank = { bad: 0, warn: 1, good: 2 };
+      const members = mine
+        .map((s) => this.row(s))
+        .sort((a, b) => rank[a.health] - rank[b.health] || b.silentDays - a.silentDays);
+      const rate = (pick: 0 | 1, weekIdx: number): number =>
+        mine.length
+          ? Math.round(
+              (mine.filter(
+                (s) =>
+                  (weekIdx === 0 ? (pick === 0 ? s.r : s.l) : (s.history[weekIdx]?.[pick] ?? 0)) >=
+                  (pick === 0 ? norms.reading : norms.listening),
+              ).length /
+                mine.length) *
+                100,
+            ) / 100
+          : 0;
+      const view = this.groupView(gr);
+      const detail: GroupDetail = {
+        group: { ...view, members: mine.length },
+        stats: {
+          weekStart: weeksBack(1)[0],
+          members: mine.length,
+          pending: 0,
+          archived: STUDENTS.filter((s) => s.group.chatId === chatId && this.archived.has(s.id))
+            .length,
+          week: { reading: rate(0, 0), listening: rate(1, 0) },
+          lastWeek: { reading: rate(0, 1), listening: rate(1, 1) },
+          reportsThisWeek: mine.reduce(
+            (n, s) =>
+              n + (REPORTS[s.id] ?? []).filter((r) => r.weekStart === weeksBack(1)[0]).length,
+            0,
+          ),
+          newFlags: members.reduce((n, m) => n + m.newFlags, 0),
+          health: {
+            good: members.filter((m) => m.health === 'good').length,
+            warn: members.filter((m) => m.health === 'warn').length,
+            bad: members.filter((m) => m.health === 'bad').length,
+          },
+        },
+        members,
+        pending: [],
+      };
+      return detail;
+    },
+    rename: async (chatId, title) => {
+      this.assertOwner();
+      const gr = GROUPS.find((x) => x.chatId === chatId);
+      if (!gr) throw new ApiError('202002', 'Группа не найдена.', 404);
+      if (title.trim()) this.groupNames.set(chatId, title.trim());
+      else this.groupNames.delete(chatId);
+      return this.groupView(gr);
+    },
+    ask: async (chatId, question) => {
+      await delay(900);
+      const gr = GROUPS.find((x) => x.chatId === chatId);
+      if (!gr) throw new ApiError('202002', 'Группа не найдена.', 404);
+      const mine = STUDENTS.filter((s) => s.group.chatId === chatId && !this.archived.has(s.id));
+      const behind = mine.filter((s) => s.r < this.norms.reading || s.l < this.norms.listening);
+      const title = this.groupNames.get(chatId) || gr.title;
+      const q = question.toLowerCase();
+      if (/отста|lag|behind|кто/.test(q))
+        return {
+          text: behind.length
+            ? `В группе ${title} отстают ${behind.length} из ${mine.length}: ${behind
+                .map(
+                  (s) =>
+                    `${this.nameOf(s)} (чтение ${s.r}/3, аудио ${s.l}/3, тишина ${s.silent} дн.)`,
+                )
+                .join('; ')}. Начать стоит с тех, у кого тишина дольше всего.`
+            : `В группе ${title} на этой неделе все идут по норме.`,
+        };
+      return {
+        text: `${title}: ${mine.length} студентов, норму по чтению выполняют ${Math.round(
+          (mine.filter((s) => s.r >= this.norms.reading).length / Math.max(mine.length, 1)) * 100,
+        )}%, по аудированию ${Math.round(
+          (mine.filter((s) => s.l >= this.norms.listening).length / Math.max(mine.length, 1)) * 100,
+        )}%. Новых флагов: ${FLAGS.filter((f) => f.student.group.chatId === chatId && this.flagStatus.get(f.id) === 'NEW').length}. Цифры считает система, я только объясняю.`,
+      };
     },
     setLevel: async (chatId, level) => {
       this.assertOwner();

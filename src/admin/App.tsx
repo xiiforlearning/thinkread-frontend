@@ -5,6 +5,7 @@ import { LoginScreen } from './Login';
 import { AssistantScreen } from './screens/Assistant';
 import { FlagsScreen } from './screens/Flags';
 import { GroupsScreen } from './screens/Groups';
+import { GroupScreen } from './screens/Group';
 import { OverviewScreen } from './screens/Overview';
 import { SettingsScreen } from './screens/Settings';
 import { StudentsScreen } from './screens/Students';
@@ -28,6 +29,7 @@ function Gate() {
       <Route path="/flags" element={<FlagsScreen />} />
       <Route path="/flags/:id" element={<FlagsScreen />} />
       <Route path="/groups" element={<GroupsScreen />} />
+      <Route path="/groups/:chatId" element={<GroupScreen />} />
       <Route path="/ai" element={<AssistantScreen />} />
       <Route path="/settings" element={owner ? <SettingsScreen /> : <Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />

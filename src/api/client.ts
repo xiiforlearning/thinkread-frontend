@@ -67,6 +67,8 @@ export interface Api {
     cancelImport(id: string): Promise<void>;
     patch(id: string, patch: { translation?: string; status?: WordStatus }): Promise<Word>;
     priority(id: string, priority: WordPriority): Promise<Word>;
+    /** W5: delete the word from the dictionary (it can be added again later). */
+    remove(id: string): Promise<Word>;
     exportText(format: 'csv' | 'txt'): Promise<{ filename: string; content: string }>;
   };
   cards: {
@@ -196,6 +198,7 @@ export class HttpApi implements Api {
     },
     patch: (id, patch) => this.call('PATCH', `/me/words/${id}`, patch),
     priority: (id, priority) => this.call('PATCH', `/me/words/${id}/priority`, { priority }),
+    remove: (id) => this.call('DELETE', `/me/words/${id}`),
     exportText: (format) => this.call('GET', '/me/words/export', undefined, { format }),
   };
 

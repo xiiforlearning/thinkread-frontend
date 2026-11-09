@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { usePatchWord, useWord, useWordPriority } from '../app/hooks';
+import { useNavigate, useParams } from 'react-router-dom';
+import { usePatchWord, useRemoveWord, useWord, useWordPriority } from '../app/hooks';
 import { ErrorBox, Loading, Screen } from '../app/Shell';
 import { wordDict } from '../i18n/screens/word';
 import { useT } from '../i18n/t';
@@ -27,6 +27,8 @@ export function WordScreen() {
   const word = useWord(id);
   const patch = usePatchWord(id);
   const priority = useWordPriority(id);
+  const remove = useRemoveWord(id);
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const t = useT(wordDict);
@@ -211,6 +213,25 @@ export function WordScreen() {
         ) : null}
       </Card>
 
+      {remove.error ? <ErrorBox error={remove.error} /> : null}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          loading={remove.isPending}
+          onClick={() => {
+            if (!window.confirm(t('removeConfirm', { word: w.word }))) return;
+            remove.mutate(undefined, {
+              onSuccess: () => {
+                haptic('success');
+                navigate('/words', { replace: true });
+              },
+            });
+          }}
+        >
+          {t('remove')}
+        </Button>
+      </div>
       <span className="tr-muted" style={{ fontSize: 12, lineHeight: '16px', textAlign: 'center' }}>
         {t('footer')}
       </span>

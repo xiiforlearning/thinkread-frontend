@@ -222,7 +222,10 @@ export interface Overview {
 
 export interface GroupView {
   chatId: number;
+  /** The owner's name for the group when set (D12), else the Telegram title. */
   title: string;
+  /** The chat's title in Telegram when the owner gave the group another name; null otherwise. */
+  telegramTitle?: string | null;
   level: GroupLevel | null;
   isActive: boolean;
   members: number;
@@ -230,6 +233,26 @@ export interface GroupView {
   teachersRefreshedAt: string | null;
   week: { reading: number; listening: number; students: number } | null;
   createdAt: string;
+}
+
+/** D12: one group's page. */
+export interface GroupDetail {
+  group: GroupView;
+  stats: {
+    weekStart: string;
+    members: number;
+    pending: number;
+    archived: number;
+    week: { reading: number; listening: number };
+    lastWeek: { reading: number; listening: number };
+    reportsThisWeek: number;
+    newFlags: number;
+    health: { good: number; warn: number; bad: number };
+  };
+  /** Registered members, worst health first. */
+  members: StudentRow[];
+  /** Imported members who have not opened the Mini App yet. */
+  pending: StudentRef[];
 }
 
 export interface MembershipCheck {
@@ -381,6 +404,10 @@ export interface AdminApi {
     one(id: string): Promise<StudentCard>;
     reports(id: string, limit: number, cursor?: string): Promise<Page<AdminReport>>;
     words(id: string): Promise<Word[]>;
+    /** W5: remove a word from the student's dictionary (the row stays as REMOVED). */
+    removeWord(id: string, wordId: string): Promise<Word>;
+    /** D9: the whole dictionary as a file body — archived students too. */
+    exportWords(id: string, format: 'csv' | 'txt'): Promise<{ filename: string; content: string }>;
     rename(id: string, displayName: string | null): Promise<StudentCard>;
     archive(id: string): Promise<StudentCard>;
     restore(id: string): Promise<StudentCard>;
@@ -393,6 +420,12 @@ export interface AdminApi {
   };
   groups: {
     list(): Promise<GroupView[]>;
+    /** D12: the group page. */
+    one(chatId: number): Promise<GroupDetail>;
+    /** D12, owner: the group's own name in the dashboard; empty = the Telegram title again. */
+    rename(chatId: number, title: string): Promise<GroupView>;
+    /** D12: the school AI narrowed to this group. */
+    ask(chatId: number, question: string, history: ChatTurn[]): Promise<{ text: string }>;
     setLevel(chatId: number, level: GroupLevel): Promise<GroupView>;
     /** Owner: hide a group the bot is no longer in (it comes back by itself when the bot is re-added). */
     deactivate(chatId: number): Promise<GroupView>;
@@ -524,6 +557,9 @@ export class HttpAdminApi implements AdminApi {
     reports: (id, limit, cursor) =>
       this.call('GET', `/admin/students/${id}/reports`, undefined, { limit, cursor }),
     words: (id) => this.call('GET', `/admin/students/${id}/words`),
+    removeWord: (id, wordId) => this.call('DELETE', `/admin/students/${id}/words/${wordId}`),
+    exportWords: (id, format) =>
+      this.call('GET', `/admin/students/${id}/words/export`, undefined, { format }),
     rename: (id, displayName) => this.call('PATCH', `/admin/students/${id}`, { displayName }),
     archive: (id) => this.call('POST', `/admin/students/${id}/archive`),
     restore: (id) => this.call('POST', `/admin/students/${id}/restore`),
@@ -538,6 +574,10 @@ export class HttpAdminApi implements AdminApi {
 
   groups: AdminApi['groups'] = {
     list: () => this.call('GET', '/admin/groups'),
+    one: (chatId) => this.call('GET', `/admin/groups/${chatId}`),
+    rename: (chatId, title) => this.call('PATCH', `/admin/groups/${chatId}`, { title }),
+    ask: (chatId, question, history) =>
+      this.call('POST', `/admin/groups/${chatId}/chat`, { question, history }),
     setLevel: (chatId, level) => this.call('PATCH', `/admin/groups/${chatId}`, { level }),
     deactivate: (chatId) => this.call('PATCH', `/admin/groups/${chatId}`, { isActive: false }),
     membershipChecks: () => this.call('GET', '/admin/membership-checks'),

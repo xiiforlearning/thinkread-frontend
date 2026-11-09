@@ -1033,6 +1033,12 @@ export class MockApi implements Api {
       w.priority = priority;
       return { ...w };
     },
+    remove: async (id) => {
+      await this.tick();
+      const w = this.owned(id);
+      this.wordsDb = this.wordsDb.filter((x) => x.id !== id);
+      return { ...w, status: 'REMOVED' };
+    },
     exportText: async (format) => {
       await this.tick();
       const rows = this.wordsDb.map((w) =>

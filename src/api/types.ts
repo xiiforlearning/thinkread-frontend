@@ -11,7 +11,8 @@ export type GroupLevel =
 export type ListeningMethod = 'PODCAST_WITH_SCRIPT' | 'SERIES' | 'PODCAST_NO_TRANSCRIPT';
 
 export type ReportType = 'READING' | 'LISTENING';
-export type WordStatus = 'LEARNING' | 'LEARNED';
+/** REMOVED = deleted by the student or the teacher (W5); never listed, revived on a re-add. */
+export type WordStatus = 'LEARNING' | 'LEARNED' | 'REMOVED';
 export type WordPriority = 'HIGH' | 'NORMAL';
 export type WordSource = 'READING' | 'PODCAST' | 'SERIES' | 'MANUAL' | 'IMPORT' | 'TEACHER';
 export type Cefr = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';

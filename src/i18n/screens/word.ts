@@ -37,6 +37,9 @@ export const wordDict = defineDict({
     learnedNote: 'Слово выучено: стадии пройдены, в карточки больше не попадает.',
     practice: 'Потренировать это слово',
     footer: 'Выученные слова не удаляются и не попадают в карточки. Стадия сохраняется.',
+    remove: 'Удалить из словаря',
+    removeConfirm:
+      'Удалить «{word}» из словаря? Слово уйдёт из карточек и счётчиков; его можно будет добавить снова.',
   },
   en: {
     stageNote1:
@@ -74,5 +77,8 @@ export const wordDict = defineDict({
     learnedNote: 'Word learned: all stages passed, it no longer comes up in cards.',
     practice: 'Practise this word',
     footer: 'Learned words are never deleted and do not come up in cards. The stage is kept.',
+    remove: 'Remove from the dictionary',
+    removeConfirm:
+      'Remove “{word}” from the dictionary? It leaves the cards and the counts; you can add it again later.',
   },
 });

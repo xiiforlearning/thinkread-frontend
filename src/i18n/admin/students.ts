@@ -88,6 +88,10 @@ export const studentsDict = defineDict({
     book: 'Книга',
     studentWords: 'Словарь студента',
     last100: 'последние 100',
+    exportCsv: 'Экспорт CSV',
+    removeWord: 'Удалить слово',
+    removeWordConfirm:
+      'Удалить «{word}» из словаря студента? Слово уйдёт из карточек и счётчиков; студент сможет добавить его снова.',
     emptyWords: 'Словарь пуст.',
     colWord: 'Слово',
     colTranslation: 'Перевод',
@@ -203,6 +207,10 @@ export const studentsDict = defineDict({
     book: 'Book',
     studentWords: "Student's dictionary",
     last100: 'last 100',
+    exportCsv: 'Export CSV',
+    removeWord: 'Remove the word',
+    removeWordConfirm:
+      'Remove “{word}” from the student’s dictionary? It leaves the cards and the counts; the student can add it again.',
     emptyWords: 'The dictionary is empty.',
     colWord: 'Word',
     colTranslation: 'Translation',

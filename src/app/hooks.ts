@@ -88,6 +88,20 @@ export function useInvalidateReports() {
   };
 }
 
+/** W5: deletes the word; the caller leaves the screen on success. */
+export function useRemoveWord(id: string) {
+  const api = useApi();
+  const qc = useQueryClient();
+  const invalidate = useInvalidateWords();
+  return useMutation({
+    mutationFn: () => api.words.remove(id),
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: keys.word(id) });
+      invalidate();
+    },
+  });
+}
+
 export function usePatchWord(id: string) {
   const api = useApi();
   const qc = useQueryClient();

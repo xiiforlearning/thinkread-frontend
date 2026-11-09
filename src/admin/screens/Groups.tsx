@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { GroupLevel } from '../../api/types';
 import { groupsDict } from '../../i18n/admin/groups';
 import { tr, useT } from '../../i18n/t';
@@ -247,7 +248,9 @@ function GroupRow({
         }}
       >
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          <span style={{ fontWeight: 600 }}>{g.title}</span>
+          <Link to={`/groups/${g.chatId}`} style={{ fontWeight: 600, color: 'var(--ink)' }}>
+            {g.title}
+          </Link>
           <span
             style={{
               fontSize: 12,

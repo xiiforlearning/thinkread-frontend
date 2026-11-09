@@ -598,41 +598,99 @@ export function ReportCell({
   );
 }
 
+/** Saves a text body as a file in the browser (the API returns the content, not a URL). */
+function saveText(filename: string, content: string, mime: string): void {
+  const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function WordsCard({ id }: { id: string }) {
   const t = useT(studentsDict);
   const api = useAdminApi();
+  const qc = useQueryClient();
   const q = useQuery({ queryKey: ['student-words', id], queryFn: () => api.students.words(id) });
+  // W5: the teacher removes a word; D9: the whole dictionary as CSV (archived students too).
+  const remove = useMutation({
+    mutationFn: (wordId: string) => api.students.removeWord(id, wordId),
+    onSuccess: (_w, wordId) => {
+      qc.setQueryData<Word[]>(['student-words', id], (cur) =>
+        cur ? cur.filter((w) => w.id !== wordId) : cur,
+      );
+      void qc.invalidateQueries({ queryKey: ['student', id] });
+      void qc.invalidateQueries({ queryKey: ['students'] });
+    },
+  });
+  const exportCsv = useMutation({
+    mutationFn: () => api.students.exportWords(id, 'csv'),
+    onSuccess: (file) => saveText(file.filename, file.content, 'text/csv'),
+  });
   return (
-    <Card desktop title={t('studentWords')} meta={t('last100')}>
+    <Card
+      desktop
+      title={t('studentWords')}
+      meta={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          {t('last100')}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="download"
+            loading={exportCsv.isPending}
+            onClick={() => exportCsv.mutate()}
+          >
+            {t('exportCsv')}
+          </Button>
+        </span>
+      }
+    >
       {q.isLoading ? <Loading /> : null}
       {q.error ? <ErrorBox error={q.error} /> : null}
-      {q.data ? <WordsTable words={q.data} /> : null}
+      {remove.error ? <Callout tone="bad">{errorText(remove.error)}</Callout> : null}
+      {exportCsv.error ? <Callout tone="bad">{errorText(exportCsv.error)}</Callout> : null}
+      {q.data ? (
+        <WordsTable
+          words={q.data}
+          removing={remove.isPending ? remove.variables : null}
+          onRemove={(w) => {
+            if (window.confirm(t('removeWordConfirm', { word: w.word }))) remove.mutate(w.id);
+          }}
+        />
+      ) : null}
     </Card>
   );
 }
 
-function WordsTable({ words }: { words: Word[] }) {
+const WORD_COLS = 'minmax(0, 1fr) minmax(0, 1fr) 70px 80px 90px 36px';
+
+function WordsTable({
+  words,
+  removing,
+  onRemove,
+}: {
+  words: Word[];
+  removing: string | null;
+  onRemove: (w: Word) => void;
+}) {
   const t = useT(studentsDict);
   if (words.length === 0)
     return <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('emptyWords')}</span>;
   return (
     <div className="ad-scroll">
-      <div
-        className="ad-table ad-table-head"
-        style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 70px 80px 90px' }}
-      >
+      <div className="ad-table ad-table-head" style={{ gridTemplateColumns: WORD_COLS }}>
         <span>{t('colWord')}</span>
         <span>{t('colTranslation')}</span>
         <span>CEFR</span>
         <span>{t('colStage')}</span>
         <span>{t('colStatus')}</span>
+        <span />
       </div>
       {words.map((w) => (
-        <div
-          key={w.id}
-          className="ad-table"
-          style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 70px 80px 90px' }}
-        >
+        <div key={w.id} className="ad-table" style={{ gridTemplateColumns: WORD_COLS }}>
           <span style={{ fontWeight: 600 }}>{w.word}</span>
           <span style={{ color: 'var(--ink-2)' }}>{w.translation ?? '—'}</span>
           <span>{w.cefr ?? '—'}</span>
@@ -644,6 +702,14 @@ function WordsTable({ words }: { words: Word[] }) {
               <Badge tone="neutral">{t('wordLearning')}</Badge>
             )}
           </span>
+          <IconButton
+            icon="close"
+            label={t('removeWord')}
+            size="sm"
+            quiet
+            loading={removing === w.id}
+            onClick={() => onRemove(w)}
+          />
         </div>
       ))}
     </div>
