@@ -629,6 +629,17 @@ function WordsCard({ id }: { id: string }) {
     mutationFn: () => api.students.exportWords(id, 'csv'),
     onSuccess: (file) => saveText(file.filename, file.content, 'text/csv'),
   });
+  // The teacher corrects a typo or a wrong sense right in the table.
+  const editWord = useMutation({
+    mutationFn: (v: { wordId: string; word: string; translation: string }) =>
+      api.students.editWord(id, v.wordId, { word: v.word, translation: v.translation }),
+    onSuccess: (saved) => {
+      qc.setQueryData<Word[]>(['student-words', id], (cur) =>
+        cur ? cur.map((w) => (w.id === saved.id ? saved : w)) : cur,
+      );
+      void qc.invalidateQueries({ queryKey: ['report'] });
+    },
+  });
   return (
     <Card
       desktop
@@ -652,6 +663,7 @@ function WordsCard({ id }: { id: string }) {
       {q.error ? <ErrorBox error={q.error} /> : null}
       {remove.error ? <Callout tone="bad">{errorText(remove.error)}</Callout> : null}
       {exportCsv.error ? <Callout tone="bad">{errorText(exportCsv.error)}</Callout> : null}
+      {editWord.error ? <Callout tone="bad">{errorText(editWord.error)}</Callout> : null}
       {q.data ? (
         <WordsTable
           words={q.data}
@@ -659,26 +671,51 @@ function WordsCard({ id }: { id: string }) {
           onRemove={(w) => {
             if (window.confirm(t('removeWordConfirm', { word: w.word }))) remove.mutate(w.id);
           }}
+          saving={editWord.isPending ? editWord.variables?.wordId : null}
+          onEdit={(w, word, translation) =>
+            editWord.mutateAsync({ wordId: w.id, word, translation }).then(
+              () => true,
+              () => false,
+            )
+          }
         />
       ) : null}
     </Card>
   );
 }
 
-const WORD_COLS = 'minmax(0, 1fr) minmax(0, 1fr) 70px 80px 90px 36px';
+const WORD_COLS = 'minmax(0, 1fr) minmax(0, 1fr) 70px 80px 90px 72px';
 
 function WordsTable({
   words,
   removing,
   onRemove,
+  saving,
+  onEdit,
 }: {
   words: Word[];
   removing: string | null;
   onRemove: (w: Word) => void;
+  saving: string | null | undefined;
+  /** Resolves true when the edit was saved (the row then leaves edit mode). */
+  onEdit: (w: Word, word: string, translation: string) => Promise<boolean>;
 }) {
   const t = useT(studentsDict);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [word, setWord] = useState('');
+  const [translation, setTranslation] = useState('');
   if (words.length === 0)
     return <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('emptyWords')}</span>;
+  const start = (w: Word) => {
+    setEditing(w.id);
+    setWord(w.word);
+    setTranslation(w.translation ?? '');
+  };
+  const submit = async (w: Word) => {
+    const nextWord = word.trim();
+    if (!nextWord) return;
+    if (await onEdit(w, nextWord, translation.trim())) setEditing(null);
+  };
   return (
     <div className="ad-scroll">
       <div className="ad-table ad-table-head" style={{ gridTemplateColumns: WORD_COLS }}>
@@ -689,29 +726,86 @@ function WordsTable({
         <span>{t('colStatus')}</span>
         <span />
       </div>
-      {words.map((w) => (
-        <div key={w.id} className="ad-table" style={{ gridTemplateColumns: WORD_COLS }}>
-          <span style={{ fontWeight: 600 }}>{w.word}</span>
-          <span style={{ color: 'var(--ink-2)' }}>{w.translation ?? '—'}</span>
-          <span>{w.cefr ?? '—'}</span>
-          <span>{w.status === 'LEARNED' ? '—' : t('stageOf', { stage: w.stage })}</span>
-          <span>
-            {w.status === 'LEARNED' ? (
-              <Badge tone="good">{t('wordLearned')}</Badge>
-            ) : (
-              <Badge tone="neutral">{t('wordLearning')}</Badge>
-            )}
-          </span>
-          <IconButton
-            icon="close"
-            label={t('removeWord')}
-            size="sm"
-            quiet
-            loading={removing === w.id}
-            onClick={() => onRemove(w)}
-          />
-        </div>
-      ))}
+      {words.map((w) =>
+        editing === w.id ? (
+          <form
+            key={w.id}
+            className="ad-table"
+            style={{ gridTemplateColumns: WORD_COLS }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit(w);
+            }}
+          >
+            <TextField
+              value={word}
+              onChange={(e) => setWord(e.target.value)}
+              aria-label={t('colWord')}
+              autoFocus
+              disabled={saving === w.id}
+            />
+            <TextField
+              value={translation}
+              onChange={(e) => setTranslation(e.target.value)}
+              aria-label={t('colTranslation')}
+              placeholder={t('translationEmpty')}
+              disabled={saving === w.id}
+            />
+            <span>{w.cefr ?? '—'}</span>
+            <span>{w.status === 'LEARNED' ? '—' : t('stageOf', { stage: w.stage })}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t('editWordHint')}</span>
+            <span style={{ display: 'flex', gap: 2 }}>
+              <IconButton
+                icon="check"
+                label={t('save')}
+                size="sm"
+                quiet
+                loading={saving === w.id}
+                onClick={() => void submit(w)}
+              />
+              <IconButton
+                icon="close"
+                label={t('cancel')}
+                size="sm"
+                quiet
+                disabled={saving === w.id}
+                onClick={() => setEditing(null)}
+              />
+            </span>
+          </form>
+        ) : (
+          <div key={w.id} className="ad-table" style={{ gridTemplateColumns: WORD_COLS }}>
+            <span style={{ fontWeight: 600 }}>{w.word}</span>
+            <span style={{ color: 'var(--ink-2)' }}>{w.translation ?? '—'}</span>
+            <span>{w.cefr ?? '—'}</span>
+            <span>{w.status === 'LEARNED' ? '—' : t('stageOf', { stage: w.stage })}</span>
+            <span>
+              {w.status === 'LEARNED' ? (
+                <Badge tone="good">{t('wordLearned')}</Badge>
+              ) : (
+                <Badge tone="neutral">{t('wordLearning')}</Badge>
+              )}
+            </span>
+            <span style={{ display: 'flex', gap: 2 }}>
+              <IconButton
+                icon="edit"
+                label={t('editWord')}
+                size="sm"
+                quiet
+                onClick={() => start(w)}
+              />
+              <IconButton
+                icon="close"
+                label={t('removeWord')}
+                size="sm"
+                quiet
+                loading={removing === w.id}
+                onClick={() => onRemove(w)}
+              />
+            </span>
+          </div>
+        ),
+      )}
     </div>
   );
 }

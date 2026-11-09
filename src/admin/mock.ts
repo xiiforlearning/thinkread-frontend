@@ -857,6 +857,8 @@ export class MockAdminApi implements AdminApi {
   private groupNames = new Map<number, string>();
   /** W5: words the teacher removed in this demo run. */
   private removedWords = new Set<string>();
+  /** Teacher's corrections of words in this demo run. */
+  private wordEdits = new Map<string, Partial<Word>>();
   private inactive = new Set<number>();
   private overrides = new Map<string, { value: unknown; updatedAt: string }>();
   private staffRows: StaffMember[] = STAFF.map((s) => ({ ...s }));
@@ -1350,7 +1352,19 @@ export class MockAdminApi implements AdminApi {
       this.find(id);
       return (REPORTS[id] ?? [])
         .flatMap((r) => wordsOf(r))
-        .filter((w) => !this.removedWords.has(w.id));
+        .filter((w) => !this.removedWords.has(w.id))
+        .map((w) => ({ ...w, ...this.wordEdits.get(w.id) }));
+    },
+    editWord: async (id, wordId, patch) => {
+      await delay();
+      this.find(id);
+      const w = (REPORTS[id] ?? []).flatMap((r) => wordsOf(r)).find((x) => x.id === wordId);
+      if (!w) throw new ApiError('304002', 'Слово не найдено.', 404);
+      const next = { ...(this.wordEdits.get(wordId) ?? {}) };
+      if (patch.word !== undefined) next.word = patch.word.trim();
+      if (patch.translation !== undefined) next.translation = patch.translation.trim() || null;
+      this.wordEdits.set(wordId, next);
+      return { ...w, ...next };
     },
     removeWord: async (id, wordId) => {
       await delay();

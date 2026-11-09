@@ -406,6 +406,12 @@ export interface AdminApi {
     words(id: string): Promise<Word[]>;
     /** W5: remove a word from the student's dictionary (the row stays as REMOVED). */
     removeWord(id: string, wordId: string): Promise<Word>;
+    /** The teacher corrects a word's spelling and/or translation. */
+    editWord(
+      id: string,
+      wordId: string,
+      patch: { word?: string; translation?: string },
+    ): Promise<Word>;
     /** D9: the whole dictionary as a file body — archived students too. */
     exportWords(id: string, format: 'csv' | 'txt'): Promise<{ filename: string; content: string }>;
     rename(id: string, displayName: string | null): Promise<StudentCard>;
@@ -558,6 +564,8 @@ export class HttpAdminApi implements AdminApi {
       this.call('GET', `/admin/students/${id}/reports`, undefined, { limit, cursor }),
     words: (id) => this.call('GET', `/admin/students/${id}/words`),
     removeWord: (id, wordId) => this.call('DELETE', `/admin/students/${id}/words/${wordId}`),
+    editWord: (id, wordId, patch) =>
+      this.call('PATCH', `/admin/students/${id}/words/${wordId}`, patch),
     exportWords: (id, format) =>
       this.call('GET', `/admin/students/${id}/words/export`, undefined, { format }),
     rename: (id, displayName) => this.call('PATCH', `/admin/students/${id}`, { displayName }),
