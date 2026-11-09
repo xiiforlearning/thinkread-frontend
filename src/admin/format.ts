@@ -79,11 +79,18 @@ export function pct(rate: number): string {
   return `${Math.round(rate * 100)}%`;
 }
 
-export function delta(d: number): { text: string; tone: 'good' | 'bad' | undefined } {
+export function delta(d: number): {
+  text: string;
+  /** "+4" / "−3" / "0" — the signed points for compact notes. */
+  pp: string;
+  tone: 'good' | 'bad' | undefined;
+} {
   const pp = Math.round(d * 100);
-  if (pp === 0) return { text: tr(formatDict, 'deltaSame'), tone: undefined };
+  const signed = pp === 0 ? '0' : `${pp > 0 ? '+' : '−'}${Math.abs(pp)}`;
+  if (pp === 0) return { text: tr(formatDict, 'deltaSame'), pp: signed, tone: undefined };
   return {
     text: tr(formatDict, 'deltaPp', { sign: pp > 0 ? '+' : '−', n: Math.abs(pp) }),
+    pp: signed,
     tone: pp > 0 ? 'good' : 'bad',
   };
 }

@@ -17,6 +17,7 @@ import {
   Composer,
   DayCell,
   HealthDot,
+  Icon,
   IconButton,
   ListGroup,
   NormCell,
@@ -40,6 +41,7 @@ import {
 import { appendChat, useChat } from '../chatStore';
 import { Empty, ErrorBox, errorText, Loading, Shell, SoonBadge } from '../Shell';
 import { useAdminApi, useIsOwner } from '../session';
+import { ReportDialog } from './ReportDialog';
 
 type HealthFilter = 'all' | Health | 'pending' | 'archived';
 
@@ -118,10 +120,22 @@ export function StudentsScreen() {
             ...(groups.data ?? []).map((g) => ({ value: String(g.chatId), label: g.title })),
           ]}
         />
-        <span className="tr-eyebrow">
-          {t('worstFirst', { n: rows.length })}
-          {list.data ? '' : '…'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span className="tr-eyebrow">
+            {t('worstFirst', { n: rows.length })}
+            {list.data ? '' : '…'}
+          </span>
+          <span className="ad-norm-legend" aria-hidden="true">
+            <span>
+              <Icon name="book" style={{ width: 12, height: 12 }} />
+              {t('colReading')}
+            </span>
+            <span>
+              <Icon name="headphones" style={{ width: 12, height: 12 }} />
+              {t('colListening')}
+            </span>
+          </span>
+        </div>
       </div>
       <div className="ad-pane-list">
         {list.isLoading ? <Loading /> : null}
@@ -149,6 +163,7 @@ function StudentCell({ s, current }: { s: StudentRow; current: boolean }) {
       title={s.name}
       subtitle={`${silence(s.silentDays, s.dmBlocked)} · ${groupsOf(s)}`}
       norms={`${s.week.reading}/${s.week.readingNorm} ${s.week.listening}/${s.week.listeningNorm}`}
+      normIcons
       health={s.health}
       flag={s.newFlags > 0}
     />
@@ -174,12 +189,14 @@ function StudentDetail({ id }: { id: string }) {
   const [showWords, setShowWords] = useState(false);
   const [parent, setParent] = useState<ChatReply | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [openReport, setOpenReport] = useState<string | null>(null);
 
   useEffect(() => {
     setRenaming(false);
     setShowWords(false);
     setParent(null);
     setNotice(null);
+    setOpenReport(null);
   }, [id]);
 
   const apply = (next: StudentCard) => {
@@ -307,7 +324,10 @@ function StudentDetail({ id }: { id: string }) {
               }}
             >
               <HealthDot status={s.health} />
-              <Badge tone={archived ? 'neutral' : s.dmBlocked ? 'bad' : pending ? 'warn' : 'good'}>
+              <Badge
+                tone={archived ? 'neutral' : s.dmBlocked ? 'bad' : pending ? 'warn' : 'good'}
+                title={s.dmBlocked && !archived ? t('botBlockedHint') : undefined}
+              >
                 {archived
                   ? t('archived')
                   : s.dmBlocked
@@ -363,6 +383,11 @@ function StudentDetail({ id }: { id: string }) {
         </div>
       </div>
 
+      {s.dmBlocked && !archived ? (
+        <Callout tone="warn" title={t('botBlocked')}>
+          {t('botBlockedHint')}
+        </Callout>
+      ) : null}
       {notice ? <Callout tone="info">{notice}</Callout> : null}
       {mutationError ? <Callout tone="bad">{errorText(mutationError)}</Callout> : null}
 
@@ -431,8 +456,18 @@ function StudentDetail({ id }: { id: string }) {
               }}
             >
               <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{fmtWeek(w.weekStart)}</span>
-              <NormCell value={w.reading.done} max={w.reading.norm} title={t('reading')} />
-              <NormCell value={w.listening.done} max={w.listening.norm} title={t('listening')} />
+              <NormCell
+                value={w.reading.done}
+                max={w.reading.norm}
+                title={t('reading')}
+                icon="book"
+              />
+              <NormCell
+                value={w.listening.done}
+                max={w.listening.norm}
+                title={t('listening')}
+                icon="headphones"
+              />
               <span
                 style={{
                   display: 'grid',
@@ -467,7 +502,7 @@ function StudentDetail({ id }: { id: string }) {
           </div>
         ) : null}
         {(reports.data?.data ?? []).slice(0, 12).map((r) => (
-          <ReportCell key={r.id} r={r} />
+          <ReportCell key={r.id} r={r} onOpen={() => setOpenReport(r.id)} />
         ))}
         <div className="tr-cell tr-cell-static">
           <Button variant="ghost" size="sm" icon="book" onClick={() => setShowWords((v) => !v)}>
@@ -476,6 +511,13 @@ function StudentDetail({ id }: { id: string }) {
         </div>
       </ListGroup>
       {showWords ? <WordsCard id={id} /> : null}
+      {openReport ? (
+        <ReportDialog
+          id={openReport}
+          student={{ id: s.id, name: s.name }}
+          onClose={() => setOpenReport(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -529,7 +571,14 @@ function FlagRow({
   );
 }
 
-export function ReportCell({ r }: { r: Report & { rawText?: string } }) {
+/** One report in a feed; with `onOpen` the row opens the whole report (D7). */
+export function ReportCell({
+  r,
+  onOpen,
+}: {
+  r: Report & { rawText?: string };
+  onOpen?: () => void;
+}) {
   const t = useT(studentsDict);
   const text = reportText(r);
   return (
@@ -543,6 +592,8 @@ export function ReportCell({ r }: { r: Report & { rawText?: string } }) {
       }
       subtitle={reportMeta(r)}
       date={fmtDay(r.createdAt, { weekday: true })}
+      onClick={onOpen}
+      chevron={!!onOpen}
     />
   );
 }

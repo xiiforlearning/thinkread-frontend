@@ -419,6 +419,8 @@ export interface CellProps extends Clickable {
   badgeTone?: BadgeTone;
   date?: ReactNode;
   norms?: string;
+  /** With two norms, the first is reading and the second listening: icons tell them apart (D6). */
+  normIcons?: boolean;
   toggle?: boolean;
   onToggle?: (checked: boolean) => void;
   disabled?: boolean;
@@ -457,7 +459,14 @@ export function Cell(p: CellProps) {
         {p.norms
           ? p.norms.split(/\s+/).map((n, i) => {
               const [v, m] = n.split('/');
-              return <NormCell key={i} value={Number(v)} max={Number(m) || 3} />;
+              return (
+                <NormCell
+                  key={i}
+                  value={Number(v)}
+                  max={Number(m) || 3}
+                  icon={p.normIcons ? (i === 0 ? 'book' : 'headphones') : undefined}
+                />
+              );
             })
           : null}
         {p.badge ? <Badge tone={p.badgeTone ?? 'brand'}>{p.badge}</Badge> : null}
@@ -710,14 +719,22 @@ export function NormCell({
   value,
   max = 3,
   title,
+  icon,
 }: {
   value: number;
   max?: number;
   title?: string;
+  /** D6: a book or headphones so the two X/3 pills can be told apart without colour. */
+  icon?: IconName;
 }) {
   const state = value >= max ? 'met' : value > 0 ? 'partial' : 'missed';
   return (
-    <span className={cx('tr', 'tr-norm', `tr-norm-${state}`)} title={title}>
+    <span
+      className={cx('tr', 'tr-norm', `tr-norm-${state}`)}
+      title={title}
+      style={icon ? { gap: 4 } : undefined}
+    >
+      {icon ? <Icon name={icon} style={{ width: 12, height: 12 }} /> : null}
       {value}/{max}
     </span>
   );

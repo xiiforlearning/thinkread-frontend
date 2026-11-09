@@ -86,6 +86,20 @@ export interface AdminReport extends Report {
   isForwarded?: boolean;
 }
 
+/** D7: one report in full — `GET /admin/reports/:id`. */
+export interface ReportFull extends AdminReport {
+  rawText: string;
+  isForwarded: boolean;
+  /** Submission window of the week (1–3) the report filled; null before the windows existed. */
+  slot: number | null;
+  /** The fields the AI parsed, as stored. */
+  parsed: Record<string, unknown> | null;
+  aiMetrics: ReportMetrics | null;
+  /** The words this report put into the dictionary. */
+  words: Word[];
+  flags: Array<{ id: string; status: FlagStatus; kinds: FlagKind[] }>;
+}
+
 /** A statement of the check with the exact quote it rests on (verified against the text). */
 export interface FlagClaim {
   statement: string;
@@ -158,6 +172,13 @@ export interface Overview {
     listeningRateDelta: number;
     cardsThisWeek: number;
     newFlags: number;
+    /** D1: flags raised in the shown week, any status — "9 new of 17 raised". */
+    flagsRaisedThisWeek?: number;
+    /** D1: raw report counts of the shown week and the one before (not windows). */
+    reportsThisWeek?: { total: number; reading: number; listening: number };
+    reportsLastWeek?: { total: number; reading: number; listening: number };
+    /** D1, owner only: this month's AI spend so far; null for a teacher. */
+    aiMonth?: { costUsd: number; tokens: number; calls: number } | null;
   };
   healthByGroup: Array<{
     chatId: number;
@@ -173,7 +194,14 @@ export interface Overview {
   }>;
   healthTotals: { good: number; warn: number; bad: number };
   history: Array<{ weekStart: string; reading: number; listening: number; students: number }>;
-  topReaders: Array<StudentRef & { pages: number; reports: number }>;
+  /** D3: ranked by the norm (met → windows → reports → pages); confirmed flags exclude. */
+  topReaders: Array<
+    StudentRef & { pages: number; reports: number; normMet?: boolean; week?: WeekCounts }
+  >;
+  /** D2: the 20 newest reports of the scope, a feed instead of counters. */
+  latestReports?: Array<
+    Report & { student: (StudentRef & { health: Health }) | null; week: WeekCounts }
+  >;
   attention: Array<
     StudentRef & {
       health: Health;
@@ -337,6 +365,10 @@ export interface AdminApi {
     verifyCode(code: string): Promise<StaffLoginResult>;
   };
   overview(week: 'this' | 'last'): Promise<Overview>;
+  reports: {
+    /** D7: any report of a visible student, in full. */
+    one(id: string): Promise<ReportFull>;
+  };
   students: {
     list(query: StudentsQuery): Promise<StudentRow[]>;
     one(id: string): Promise<StudentCard>;
@@ -474,6 +506,10 @@ export class HttpAdminApi implements AdminApi {
 
   overview: AdminApi['overview'] = (week) =>
     this.call('GET', '/admin/overview', undefined, { week });
+
+  reports: AdminApi['reports'] = {
+    one: (id) => this.call('GET', `/admin/reports/${id}`),
+  };
 
   students: AdminApi['students'] = {
     list: (query) => this.call('GET', '/admin/students', undefined, { ...query }),

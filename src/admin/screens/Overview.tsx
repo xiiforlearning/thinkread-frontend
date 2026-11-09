@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { overviewDict } from '../../i18n/admin/overview';
-import { plural, useT } from '../../i18n/t';
+import { type Params, plural, useT } from '../../i18n/t';
 import {
   Button,
   Card,
@@ -15,17 +15,22 @@ import {
 import type { Overview } from '../api';
 import {
   delta,
+  fmtRelative,
   fmtTime,
   fmtWeek,
   groupsOf,
   HEALTH_TONE,
+  money,
   num,
   pages,
   pct,
+  reportMeta,
   silence,
+  tokensShort,
 } from '../format';
 import { ErrorBox, Loading, PageHead, Shell } from '../Shell';
-import { useAdminApi } from '../session';
+import { useAdminApi, useIsOwner } from '../session';
+import { ReportDialog, WeekPills } from './ReportDialog';
 
 /** 11 · Обзор недели. */
 export function OverviewScreen() {
@@ -60,15 +65,47 @@ export function OverviewScreen() {
   );
 }
 
+/** "4 отчёта" with the right plural. */
+type OverviewKey = keyof typeof overviewDict.ru;
+function reportsCount(n: number, t: (key: OverviewKey, params?: Params) => string): string {
+  return `${n} ${plural(n, {
+    ru: [t('reportsOne'), t('reportsFew'), t('reportsMany')],
+    en: [t('reportsOne'), t('reportsFew')],
+  })}`;
+}
+
 function Body({ o }: { o: Overview }) {
   const t = useT(overviewDict);
+  const owner = useIsOwner();
   const r = delta(o.stats.readingRateDelta);
   const l = delta(o.stats.listeningRateDelta);
   const perStudent =
     o.stats.activeStudents > 0 ? Math.round(o.stats.cardsThisWeek / o.stats.activeStudents) : 0;
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState<{
+    id: string;
+    student: { id: string; name: string } | null;
+  } | null>(null);
+  // D3: the post names the norm, not pages — pages are the tie-break only.
+  const topDetail = (x: Overview['topReaders'][number]): string => {
+    const parts = [
+      x.normMet
+        ? t('normMet')
+        : x.week
+          ? t('normPart', {
+              reading: x.week.reading,
+              readingNorm: x.week.readingNorm,
+              listening: x.week.listening,
+              listeningNorm: x.week.listeningNorm,
+            })
+          : null,
+      reportsCount(x.reports, t),
+      x.pages > 0 ? pages(x.pages) : null,
+    ];
+    return parts.filter((p): p is string => p !== null).join(', ');
+  };
   const topText = o.topReaders
-    .map((r, i) => t('topLine', { n: i + 1, name: r.name, pages: pages(r.pages) }))
+    .map((x, i) => t('topLine', { n: i + 1, name: x.name, detail: topDetail(x) }))
     .join('\n');
   const copyTop = () => {
     void navigator.clipboard?.writeText(
@@ -76,9 +113,17 @@ function Body({ o }: { o: Overview }) {
     );
     setCopied(true);
   };
+  // D1: one tile per question the owner asks on Monday morning.
+  const reports = o.stats.reportsThisWeek;
+  const lastReports = o.stats.reportsLastWeek;
+  const reportsDiff = reports && lastReports ? reports.total - lastReports.total : 0;
+  const gapPp = Math.round((o.stats.readingRate - o.stats.listeningRate) * 100);
+  const raised = o.stats.flagsRaisedThisWeek;
+  const ai = owner ? o.stats.aiMonth : null;
+  const tiles = 5 + (ai ? 1 : 0);
   return (
     <>
-      <div className="ad-grid ad-grid-5">
+      <div className={`ad-grid ad-grid-${tiles}`}>
         <StatTile
           label={t('activeStudents')}
           value={num(o.stats.activeStudents)}
@@ -91,17 +136,46 @@ function Body({ o }: { o: Overview }) {
             archived: o.stats.archivedStudents,
           })}
         />
+        {reports ? (
+          <StatTile
+            label={t('reportsWeek')}
+            value={num(reports.total)}
+            note={
+              <>
+                {t('reportsBreakdown', { reading: reports.reading, listening: reports.listening })}
+                <br />
+                {reportsDiff === 0
+                  ? t('sameAsLastWeek')
+                  : t('vsLastWeek', {
+                      sign: reportsDiff > 0 ? '+' : '−',
+                      n: Math.abs(reportsDiff),
+                    })}
+              </>
+            }
+            noteTone={reportsDiff > 0 ? 'good' : reportsDiff < 0 ? 'bad' : undefined}
+          />
+        ) : null}
         <StatTile
-          label={t('readingNorm')}
-          value={pct(o.stats.readingRate)}
-          note={r.text}
-          noteTone={r.tone}
-        />
-        <StatTile
-          label={t('listeningNorm')}
-          value={pct(o.stats.listeningRate)}
-          note={l.text}
-          noteTone={l.tone}
+          label={t('norms')}
+          value={
+            <span style={{ whiteSpace: 'nowrap', fontSize: '0.78em' }}>
+              {pct(o.stats.readingRate)}
+              <span style={{ color: 'var(--ink-3)', fontWeight: 400 }}> · </span>
+              {pct(o.stats.listeningRate)}
+            </span>
+          }
+          note={
+            <>
+              {t('deltas', { r: r.pp, l: l.pp })}
+              <br />
+              {gapPp > 0
+                ? t('listeningLags', { n: gapPp })
+                : gapPp < 0
+                  ? t('listeningLeads', { n: -gapPp })
+                  : t('normsEven')}
+            </>
+          }
+          noteTone={gapPp >= 15 ? 'bad' : undefined}
         />
         <StatTile
           label={t('cardsWeek')}
@@ -112,8 +186,25 @@ function Body({ o }: { o: Overview }) {
           label={t('newFlags')}
           value={o.stats.newFlags}
           tone={o.stats.newFlags > 0 ? 'bad' : undefined}
-          note={<Link to="/flags">{t('openInbox')}</Link>}
+          note={
+            <>
+              {raised !== undefined ? (
+                <>
+                  {t('flagsRaised', { n: raised })}
+                  <br />
+                </>
+              ) : null}
+              <Link to="/flags">{t('openInbox')}</Link>
+            </>
+          }
         />
+        {ai ? (
+          <StatTile
+            label={t('aiMonth')}
+            value={money(ai.costUsd)}
+            note={t('aiNote', { tokens: tokensShort(ai.tokens), calls: num(ai.calls) })}
+          />
+        ) : null}
       </div>
 
       <div className="ad-grid ad-grid-2">
@@ -243,54 +334,89 @@ function Body({ o }: { o: Overview }) {
         </Card>
       </div>
 
-      <div className="ad-grid ad-grid-2">
-        <ListGroup desktop header={t('top3')} footer={t('topFooter')}>
-          {o.topReaders.length === 0 ? (
-            <div className="tr-cell tr-cell-static">
-              <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('noReading')}</span>
-            </div>
-          ) : null}
-          {o.topReaders.map((r, i) => (
-            <Cell
-              key={r.id}
-              to={`/students/${r.id}`}
-              tile={String(i + 1)}
-              tileTone={i === 0 ? 'solid' : i === 1 ? 'brand' : 'neutral'}
-              title={r.name}
-              subtitle={groupsOf(r)}
-              date={pages(r.pages)}
-            />
-          ))}
-          {o.topReaders.length > 0 ? (
-            <div className="tr-cell tr-cell-static">
-              <Button variant={copied ? 'good' : 'tonal'} size="sm" icon="copy" onClick={copyTop}>
-                {copied ? t('copied') : t('copyForGroup')}
-              </Button>
-            </div>
-          ) : null}
-        </ListGroup>
+      <div className={`ad-grid ${o.latestReports ? 'ad-grid-feed' : 'ad-grid-2'}`}>
+        <div className="ad-col">
+          <ListGroup desktop header={t('top3')} footer={t('topFooter')}>
+            {o.topReaders.length === 0 ? (
+              <div className="tr-cell tr-cell-static">
+                <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('noReading')}</span>
+              </div>
+            ) : null}
+            {o.topReaders.map((x, i) => (
+              <Cell
+                key={x.id}
+                to={`/students/${x.id}`}
+                tile={String(i + 1)}
+                tileTone={i === 0 ? 'solid' : i === 1 ? 'brand' : 'neutral'}
+                title={x.name}
+                subtitle={`${groupsOf(x)} · ${topDetail(x)}`}
+                trailing={x.week ? <WeekPills week={x.week} /> : <span>{pages(x.pages)}</span>}
+              />
+            ))}
+            {o.topReaders.length > 0 ? (
+              <div className="tr-cell tr-cell-static">
+                <Button variant={copied ? 'good' : 'tonal'} size="sm" icon="copy" onClick={copyTop}>
+                  {copied ? t('copied') : t('copyForGroup')}
+                </Button>
+              </div>
+            ) : null}
+          </ListGroup>
 
-        <ListGroup desktop header={t('attention')}>
-          {o.attention.length === 0 ? (
-            <div className="tr-cell tr-cell-static">
-              <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('allActive')}</span>
-            </div>
-          ) : null}
-          {o.attention.map((s) => (
-            <Cell
-              key={s.id}
-              to={`/students/${s.id}`}
-              avatar={s.name}
-              avatarTone={HEALTH_TONE[s.health]}
-              title={s.name}
-              subtitle={`${groupsOf(s)} · ${s.noReportsForWeeks ? `${t('weeksNoReports', { n: s.noReportsForWeeks })} · ` : ''}${silence(s.silentDays, s.dmBlocked)}`}
-              norms={`${s.week.reading}/${s.week.readingNorm} ${s.week.listening}/${s.week.listeningNorm}`}
-              health={s.health}
-              chevron
-            />
-          ))}
-        </ListGroup>
+          <ListGroup desktop header={t('attention')}>
+            {o.attention.length === 0 ? (
+              <div className="tr-cell tr-cell-static">
+                <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('allActive')}</span>
+              </div>
+            ) : null}
+            {o.attention.map((s) => (
+              <Cell
+                key={s.id}
+                to={`/students/${s.id}`}
+                avatar={s.name}
+                avatarTone={HEALTH_TONE[s.health]}
+                title={s.name}
+                subtitle={`${groupsOf(s)} · ${s.noReportsForWeeks ? `${t('weeksNoReports', { n: s.noReportsForWeeks })} · ` : ''}${silence(s.silentDays, s.dmBlocked)}`}
+                norms={`${s.week.reading}/${s.week.readingNorm} ${s.week.listening}/${s.week.listeningNorm}`}
+                normIcons
+                health={s.health}
+                chevron
+              />
+            ))}
+          </ListGroup>
+        </div>
+
+        {o.latestReports ? (
+          <ListGroup desktop header={t('latest')} footer={t('latestMeta')}>
+            {o.latestReports.length === 0 ? (
+              <div className="tr-cell tr-cell-static">
+                <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{t('latestEmpty')}</span>
+              </div>
+            ) : null}
+            {o.latestReports.map((x) => (
+              <Cell
+                key={x.id}
+                onClick={() => setOpen({ id: x.id, student: x.student })}
+                avatar={x.student?.name ?? t('anonymous')}
+                avatarTone={x.student ? HEALTH_TONE[x.student.health] : 'neutral'}
+                title={
+                  <>
+                    {x.student?.name ?? t('anonymous')}
+                    <span style={{ color: 'var(--ink-2)', fontWeight: 400 }}>
+                      {' · '}
+                      {x.sourceTitle ?? (x.type === 'READING' ? t('book') : t('podcast'))}
+                    </span>
+                  </>
+                }
+                subtitle={`${fmtRelative(x.createdAt)} · ${reportMeta(x)}`}
+                trailing={<WeekPills week={x.week} />}
+              />
+            ))}
+          </ListGroup>
+        ) : null}
       </div>
+      {open ? (
+        <ReportDialog id={open.id} student={open.student} onClose={() => setOpen(null)} />
+      ) : null}
     </>
   );
 }

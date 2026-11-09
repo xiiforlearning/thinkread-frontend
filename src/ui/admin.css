@@ -150,6 +150,77 @@
 .ad-grid-wide {
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
 }
+.ad-grid-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+/* D2: lists on the left, the report feed wider on the right */
+.ad-grid-feed {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  align-items: start;
+}
+.ad-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* D7: report dialog */
+.ad-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(0 0 0 / 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+}
+.ad-modal {
+  width: min(760px, 100%);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.28);
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ad-modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ad-modal-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 22px;
+}
+.ad-kv {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 6px 12px;
+  font-size: 13px;
+}
+.ad-kv dt {
+  color: var(--ink-2);
+}
+.ad-kv dd {
+  margin: 0;
+}
+.ad-norm-legend {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.ad-norm-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 .ad-table {
   display: grid;
   gap: 10px;
@@ -208,8 +279,12 @@
   gap: 10px;
 }
 @media (max-width: 1100px) {
-  .ad-grid-5 {
+  .ad-grid-5,
+  .ad-grid-6 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ad-grid-feed {
+    grid-template-columns: minmax(0, 1fr);
   }
   .ad-grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -312,6 +387,7 @@
     line-height: 26px;
   }
   .ad-grid-5,
+  .ad-grid-6,
   .ad-grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

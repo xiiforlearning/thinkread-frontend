@@ -19,6 +19,7 @@ import type {
   MembershipCheck,
   Overview,
   ReminderRun,
+  ReportFull,
   SettingView,
   StaffMember,
   StudentCard,
@@ -413,6 +414,26 @@ function listening(
       `слушал ${title}, с первого раза ${first}%${second ? `, после ${times}-го ${second}%` : ''}, слушал ${times} раз. ${retelling} слова: ${words.join(', ')}`,
     isForwarded: forwarded,
   };
+}
+
+/** The words a demo report added, as dictionary rows (deterministic ids per report). */
+function wordsOf(r: AdminReport): Word[] {
+  return (REPORT_WORDS.get(r.id) ?? []).map((w, i): Word => ({
+    id: `${r.id}-w${i}`,
+    word: w,
+    translation: null,
+    example: null,
+    cefr: null,
+    status: i % 4 === 0 ? 'LEARNED' : 'LEARNING',
+    stage: ((i % 3) + 1) as 1 | 2 | 3,
+    priority: 'NORMAL',
+    source: r.type === 'READING' ? 'READING' : 'PODCAST',
+    sourceReportId: r.id,
+    sourceListId: null,
+    nextDueAt: null,
+    createdAt: r.createdAt,
+    learnedAt: i % 4 === 0 ? r.createdAt : null,
+  }));
 }
 
 function stripRaw(r: AdminReport): Report {
@@ -1100,19 +1121,68 @@ export class MockAdminApi implements AdminApi {
       totals.bad += gr.bad;
     }
     const norms = this.norms;
+    // D3: by the norm first (met → filled → reports → pages); a REVIEWED flag this week excludes.
+    const confirmed = new Set(
+      FLAGS.filter((f) => (this.flagStatus.get(f.id) ?? f.status) === 'REVIEWED').map(
+        (f) => f.student.id,
+      ),
+    );
+    const weekReports = (s: S): AdminReport[] =>
+      (REPORTS[s.id] ?? []).filter((r) => r.weekStart === weeks[offset]);
     const top = active
-      .map((s) => ({
-        s,
-        pages: (REPORTS[s.id] ?? [])
-          .filter((r) => r.type === 'READING' && r.weekStart === weeks[offset])
-          .reduce((n, r) => n + (r.pages ?? 0), 0),
-        reports: (REPORTS[s.id] ?? []).filter(
-          (r) => r.type === 'READING' && r.weekStart === weeks[offset],
-        ).length,
-      }))
-      .filter((x) => x.pages > 0)
-      .sort((a, b) => b.pages - a.pages)
+      .filter((s) => !confirmed.has(s.id))
+      .map((s) => {
+        const rs = weekReports(s);
+        const reading = offset === 0 ? s.r : (s.history[1]?.[0] ?? 0);
+        const listening = offset === 0 ? s.l : (s.history[1]?.[1] ?? 0);
+        const normMet = reading >= norms.reading && listening >= norms.listening;
+        return {
+          s,
+          normMet,
+          week: { reading, listening, readingNorm: norms.reading, listeningNorm: norms.listening },
+          pages: rs.reduce((n, r) => n + (r.pages ?? 0), 0),
+          reports: rs.length,
+          score: [
+            Number(normMet),
+            Math.min(reading, norms.reading) + Math.min(listening, norms.listening),
+            rs.length,
+          ],
+        };
+      })
+      .filter((x) => x.reports > 0)
+      .sort((a, b) => {
+        for (let i = 0; i < a.score.length; i += 1)
+          if (a.score[i] !== b.score[i]) return b.score[i] - a.score[i];
+        return b.pages - a.pages || a.s.name.localeCompare(b.s.name);
+      })
       .slice(0, 3);
+    const countWeek = (w: string): { total: number; reading: number; listening: number } => {
+      let reading = 0;
+      let listening = 0;
+      for (const s of active)
+        for (const r of REPORTS[s.id] ?? [])
+          if (r.weekStart === w) {
+            if (r.type === 'READING') reading += 1;
+            else listening += 1;
+          }
+      // the demo's hand-written reports cover a few students; scale to the school
+      const k = 6;
+      return { total: (reading + listening) * k, reading: reading * k, listening: listening * k };
+    };
+    const latestReports: NonNullable<Overview['latestReports']> = active
+      .flatMap((s) => (REPORTS[s.id] ?? []).map((r) => ({ s, r })))
+      .sort((a, b) => b.r.createdAt.localeCompare(a.r.createdAt))
+      .slice(0, 20)
+      .map(({ s, r }) => ({
+        ...stripRaw(r),
+        student: { ...this.row(s), health: this.healthOf(s) },
+        week: {
+          reading: s.r,
+          listening: s.l,
+          readingNorm: norms.reading,
+          listeningNorm: norms.listening,
+        },
+      }));
     const stats: Overview['stats'] = {
       activeStudents: 96 - this.archived.size,
       pendingStudents: 0,
@@ -1124,6 +1194,13 @@ export class MockAdminApi implements AdminApi {
       listeningRateDelta: Math.round((listeningPct[offset] - listeningPct[offset + 1]) * 100) / 100,
       cardsThisWeek: offset === 0 ? 1240 : 1315,
       newFlags: FLAGS.filter((f) => this.flagStatus.get(f.id) === 'NEW').length,
+      flagsRaisedThisWeek: Math.max(
+        FLAGS.filter((f) => f.daysAgo <= 6).length,
+        FLAGS.filter((f) => this.flagStatus.get(f.id) === 'NEW').length,
+      ),
+      reportsThisWeek: countWeek(weeks[offset]),
+      reportsLastWeek: countWeek(weeks[offset + 1]),
+      aiMonth: this.role === 'OWNER' ? { costUsd: 4.37, tokens: 1_860_000, calls: 912 } : null,
     };
     return {
       weekStart: weeks[offset],
@@ -1149,7 +1226,14 @@ export class MockAdminApi implements AdminApi {
           students: 96,
         }))
         .reverse(),
-      topReaders: top.map(({ s, pages, reports }) => ({ ...this.row(s), pages, reports })),
+      topReaders: top.map(({ s, pages, reports, normMet, week: w }) => ({
+        ...this.row(s),
+        pages,
+        reports,
+        normMet,
+        week: w,
+      })),
+      latestReports,
       attention: active
         .map((s) => ({
           s,
@@ -1175,6 +1259,47 @@ export class MockAdminApi implements AdminApi {
           },
         })),
     };
+  };
+
+  reports: AdminApi['reports'] = {
+    one: async (id) => {
+      await delay();
+      for (const s of STUDENTS) {
+        const r = (REPORTS[s.id] ?? []).find((x) => x.id === id);
+        if (!r) continue;
+        const full: ReportFull = {
+          ...r,
+          rawText: r.rawText ?? r.summary ?? '',
+          isForwarded: r.isForwarded ?? false,
+          slot: Math.min(
+            3,
+            Math.max(1, Math.ceil((((new Date(r.createdAt).getDay() + 6) % 7) + 1) / 2.5)),
+          ),
+          parsed: {
+            type: r.type,
+            sourceTitle: r.sourceTitle,
+            pages: r.pages,
+            firstPassPct: r.firstPassPct,
+            secondPassPct: r.secondPassPct,
+            listenCount: r.listenCount,
+            summary: r.summary,
+          },
+          aiMetrics: r.rawText
+            ? { words: r.rawText.split(/\s+/).length, errorsPer100: 3.1, advanced: 0 }
+            : null,
+          words: wordsOf(r),
+          flags: FLAGS.filter(
+            (f) => f.reportIndex !== null && REPORTS[f.student.id]?.[f.reportIndex]?.id === id,
+          ).map((f) => ({
+            id: f.id,
+            status: this.flagStatus.get(f.id) ?? f.status,
+            kinds: [f.kind, ...(f.more ?? []).map((m) => m.kind)],
+          })),
+        };
+        return full;
+      }
+      throw new ApiError('305002', 'Отчёт не найден.', 404);
+    },
   };
 
   students: AdminApi['students'] = {
@@ -1209,28 +1334,8 @@ export class MockAdminApi implements AdminApi {
     },
     words: async (id) => {
       await delay();
-      const s = this.find(id);
-      const words = (REPORTS[id] ?? []).flatMap((r) =>
-        (REPORT_WORDS.get(r.id) ?? []).map((w) => ({ w, r })),
-      );
-      return words
-        .map(({ w, r }, i): Word => ({
-          id: uid(),
-          word: w,
-          translation: null,
-          example: null,
-          cefr: null,
-          status: i % 4 === 0 ? 'LEARNED' : 'LEARNING',
-          stage: ((i % 3) + 1) as 1 | 2 | 3,
-          priority: 'NORMAL',
-          source: r.type === 'READING' ? 'READING' : 'PODCAST',
-          sourceReportId: r.id,
-          sourceListId: null,
-          nextDueAt: null,
-          createdAt: r.createdAt,
-          learnedAt: i % 4 === 0 ? r.createdAt : null,
-        }))
-        .concat(s.words > words.length ? [] : []);
+      this.find(id);
+      return (REPORTS[id] ?? []).flatMap((r) => wordsOf(r));
     },
     rename: async (id, displayName) => {
       this.assertOwner();
