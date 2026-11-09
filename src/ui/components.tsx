@@ -1077,6 +1077,7 @@ export function CheckRow({
   disabled,
   title,
   subtitle,
+  note,
   badge,
   badgeTone = 'brand',
 }: {
@@ -1084,7 +1085,9 @@ export function CheckRow({
   onChange: (v: boolean) => void;
   disabled?: boolean;
   title: string;
-  subtitle?: string | null;
+  subtitle?: ReactNode;
+  /** A quieter third line, e.g. the sentence the word was used in. */
+  note?: string | null;
   badge?: ReactNode;
   badgeTone?: BadgeTone;
 }) {
@@ -1103,6 +1106,11 @@ export function CheckRow({
       <span className="tr-cell-text">
         <span className="tr-cell-title">{title}</span>
         {subtitle ? <span className="tr-cell-sub">{subtitle}</span> : null}
+        {note ? (
+          <span className="tr-cell-sub" style={{ fontStyle: 'italic', opacity: 0.85 }}>
+            «{note}»
+          </span>
+        ) : null}
       </span>
       {badge ? (
         <span className="tr-cell-trailing">

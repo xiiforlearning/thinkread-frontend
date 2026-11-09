@@ -153,7 +153,15 @@ export function SubmitReportScreen() {
       });
     } else if (r.status === 'CONFIRM_WORDS') {
       haptic('light');
-      setStep({ kind: 'confirm', type, confirm: r, excluded: new Set(), extra: '', asked: false });
+      setStep({
+        kind: 'confirm',
+        type,
+        confirm: r,
+        // W6: A1 words start unticked — the student adds them on purpose or not at all.
+        excluded: new Set(r.words.filter((w) => w.basic).map((w) => w.word)),
+        extra: '',
+        asked: false,
+      });
     } else {
       haptic('success');
       invalidate();
@@ -489,12 +497,14 @@ function ConfirmView({
       ? ((error.details as { minWords?: number } | undefined)?.minWords ?? c.minWords)
       : null;
   const duplicates = c.words.filter((w) => w.duplicate).length;
+  const basics = c.words.filter((w) => w.basic && !w.duplicate).length;
   const showInput = step.asked || step.extra.length > 0;
   return (
     <>
       {c.hasList ? (
         <Callout tone="brand" title={t('confirmFound', { words: words(c.words.length) })}>
           {duplicates ? t('confirmDuplicates', { n: duplicates }) : ''}
+          {basics ? t('confirmBasics', { n: basics }) : ''}
           {c.dropped ? t('confirmDropped', { n: c.dropped, max: c.maxWords }) : ''}
           {t('confirmFoundBody')}
         </Callout>
@@ -538,8 +548,20 @@ function ConfirmView({
                 setStep({ ...step, excluded });
               }}
               title={it.word}
-              subtitle={it.translation ?? t('translationByAi')}
-              badge={it.duplicate ? t('alreadyHave') : undefined}
+              subtitle={
+                it.translation ? (
+                  <>
+                    {it.translation}
+                    {it.suggested ? (
+                      <span style={{ opacity: 0.7 }}> · {t('translationSuggested')}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  t('translationByAi')
+                )
+              }
+              note={it.context ?? null}
+              badge={it.duplicate ? t('alreadyHave') : it.basic ? t('basicWord') : undefined}
               badgeTone="neutral"
             />
           ))}

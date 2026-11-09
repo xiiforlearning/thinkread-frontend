@@ -121,6 +121,13 @@ export interface FlagDetails {
   baseline?: { reports: number; errorsPer100: number; advanced: number };
   errors?: string[];
   advancedQuotes?: string[];
+  /** SPOT_CHECK_FAILED (F7): the question, the student's answer and the fragment the grader relied on. */
+  spotCheck?: {
+    question: string;
+    answer: string | null;
+    verdict: 'OK' | 'VAGUE' | 'WRONG' | 'NO_ANSWER';
+    quote: string | null;
+  };
 }
 
 export interface FlagView {

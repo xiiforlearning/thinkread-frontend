@@ -87,7 +87,10 @@ export const submitReportDict = defineDict({
       'В этом окне отчёт уже был. Этот сохранён, слова добавлены, но новый слот недели он не открывает.',
     droppedDaily: 'Лимит {max} слов в день: {n} не добавлены, вернись к ним завтра.',
     translationByAi: 'перевод подберёт AI',
+    translationSuggested: 'по контексту',
     alreadyHave: 'уже есть',
+    basicWord: 'базовое',
+    confirmBasics: '{n} базовых (A1) без галочки — отметь, если правда нужны. ',
   },
   en: {
     hintReading:
@@ -175,6 +178,9 @@ export const submitReportDict = defineDict({
       'There was already a report in this window. This one is saved and the words are added, but it opens no new slot this week.',
     droppedDaily: 'Daily cap of {max} words: {n} were not added, come back to them tomorrow.',
     translationByAi: 'AI will add the translation',
+    translationSuggested: 'by context',
     alreadyHave: 'already have',
+    basicWord: 'basic',
+    confirmBasics: '{n} basic (A1) left unticked — tick them if you really need them. ',
   },
 });

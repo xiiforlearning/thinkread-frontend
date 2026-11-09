@@ -141,6 +141,23 @@ function Signals({ flag: f }: { flag: FlagView }) {
               <strong style={{ fontSize: 14 }}>{flagTitle(k)}</strong>
             </div>
             <span style={{ fontSize: 13, lineHeight: '19px' }}>{reason ?? t('noReason')}</span>
+            {k === 'SPOT_CHECK_FAILED' && d.spotCheck ? (
+              <dl
+                className="ad-kv"
+                style={{ padding: '8px 12px', borderLeft: '3px solid var(--line)' }}
+              >
+                <dt>{t('scQuestion')}</dt>
+                <dd>{d.spotCheck.question}</dd>
+                <dt>{t('scAnswer')}</dt>
+                <dd>{d.spotCheck.answer ?? t('scNoAnswer')}</dd>
+                <dt>{t('scFragment')}</dt>
+                <dd style={{ color: 'var(--ink-2)' }}>
+                  {d.spotCheck.quote ? `«${d.spotCheck.quote}»` : t('scNoFragment')}
+                </dd>
+                <dt>{t('scVerdict')}</dt>
+                <dd>{d.spotCheck.verdict}</dd>
+              </dl>
+            ) : null}
             {claims.map((c, i) => (
               <div
                 key={i}

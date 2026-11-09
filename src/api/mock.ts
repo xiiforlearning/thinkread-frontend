@@ -32,6 +32,16 @@ import {
   type WordStatus,
 } from './types';
 
+/** W6 demo: translations by the meaning in a report, for words the student left bare. */
+const DEMO_TRANSLATIONS: Record<string, string> = {
+  will: 'воля',
+  quote: 'цитата',
+  wand: 'волшебная палочка',
+  muggle: 'магл',
+};
+/** W6 demo: the A1 words a student might list — unticked by default. */
+const BASIC_DEMO = new Set(['uncle', 'family', 'night', 'big', 'house', 'go', 'friend']);
+
 /** Texts the real API sends in the student's language (cards/messages.ts, ReportIntakeService). */
 const mockCards = defineDict({
   ru: {
@@ -472,6 +482,7 @@ export class MockApi implements Api {
   }
 
   /** The student's explicit list ("слова: a — b, c") as the confirmation screen shows it. */
+  // (W6 in the demo: a few contextual translations and the A1 words that start unticked)
   private extractWords(text: string): DraftWord[] {
     const seen = new Set<string>();
     const out: DraftWord[] = [];
@@ -482,9 +493,16 @@ export class MockApi implements Api {
       const word = w.trim();
       if (!word || seen.has(lemma(word))) continue;
       seen.add(lemma(word));
+      const own = rest.join(' ').trim() || null;
+      const sentence = text
+        .split(/(?<=[.!?])\s+|\n/)
+        .find((s) => new RegExp(`\\b${word}\\w{0,3}\\b`, 'i').test(s) && !/[—–-]/.test(s));
       out.push({
         word,
-        translation: rest.join(' ').trim() || null,
+        translation: own ?? DEMO_TRANSLATIONS[lemma(word)] ?? null,
+        suggested: !own && lemma(word) in DEMO_TRANSLATIONS,
+        context: sentence?.trim() ?? null,
+        basic: BASIC_DEMO.has(lemma(word)),
         duplicate: this.wordsDb.some((x) => lemma(x.word) === lemma(word)),
       });
     }
